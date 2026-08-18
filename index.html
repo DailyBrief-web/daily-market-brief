@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Daily Brief">
+    <title>Daily Market Brief</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Josefin+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* ===== brand tokens ===== */
+            --text: #FFFFFF;
+            --bg: #060A0E;
+            --primary: #0008F0;
+            --secondary: #EE5017;
+            --accent: #0008F0;
+
+            /* derived / functional tokens (not directly specified, built to sit on the palette above) */
+            --text-dim: rgba(255, 255, 255, 0.58);
+            --text-faint: rgba(255, 255, 255, 0.32);
+            --card-bg: #10151d;
+            --card-bg-raised: #161d27;
+            --hairline: rgba(255, 255, 255, 0.08);
+            --success: #00d084;
+            --danger: #ff6b6b;
+
+            /* ===== type ===== */
+            --font-display: 'Alfa Slab One', cursive;
+            --font-heading: 'Josefin Sans', sans-serif;
+            --font-body: 'Quicksand', sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            font-weight: 500;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 16px 12px;
+            transition: opacity 0.2s ease;
+        }
+
+        /* HEADER */
+        .header {
+            margin-bottom: 30px;
+            padding-bottom: 24px;
+            border-bottom: 3px solid var(--secondary);
+        }
+
+        .header-date {
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+        }
+
+        .header-title {
+            font-family: var(--font-display);
+            font-weight: 400;
+            font-size: 26px;
+            line-height: 1.35;
+            color: var(--text);
+            letter-spacing: 0.2px;
+        }
+
+        /* SECTION */
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-family: var(--font-heading);
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.2px;
+        }
+
+        .section-subtitle {
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 700;
+            margin: 16px 0 10px;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .section-icon {
+            font-size: 20px;
+        }
+
+        .section-empty {
+            font-family: var(--font-body);
+            color: var(--text-faint);
+            font-size: 13px;
+            font-style: italic;
+            padding: 14px 0;
+        }
+
+        /* ITEM (expandable news entry) */
+        .item {
+            background: var(--card-bg);
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 3px solid var(--secondary);
+            overflow: hidden;
+        }
+
+        .item-toggle {
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 16px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            color: inherit;
+        }
+
+        .item-toggle:disabled {
+            cursor: default;
+        }
+
+        .item-summary {
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .item-summary .ellipsis {
+            color: var(--text-dim);
+        }
+
+        .item-caret {
+            flex: 0 0 auto;
+            font-size: 13px;
+            color: var(--secondary);
+            transition: transform 0.2s ease;
+            margin-top: 3px;
+        }
+
+        .item.expanded .item-caret {
+            transform: rotate(90deg);
+        }
+
+        .item-rest {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .item.expanded .item-rest {
+            max-height: 600px;
+        }
+
+        .item-rest-inner {
+            padding: 0 16px 16px 16px;
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+
+        /* STOCK TABS */
+        .stock-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            background: var(--card-bg);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .stock-tab {
+            flex: 1;
+            border: none;
+            background: none;
+            color: var(--text-dim);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 700;
+            padding: 10px 8px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .stock-tab.active {
+            background: var(--primary);
+            color: #FFFFFF;
+        }
+
+        /* STOCK LIST */
+        .stock-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .stock-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .stock-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 12px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+            gap: 10px;
+        }
+
+        .stock-id {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stock-caret {
+            font-size: 11px;
+            color: var(--secondary);
+            transition: transform 0.2s ease;
+        }
+
+        .stock-card.expanded .stock-caret {
+            transform: rotate(90deg);
+        }
+
+        .stock-symbol {
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .stock-name {
+            font-family: var(--font-body);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .stock-change {
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-align: center;
+            min-width: 65px;
+            flex: 0 0 auto;
+        }
+
+        .stock-change.up {
+            background: rgba(0, 208, 132, 0.15);
+            color: var(--success);
+        }
+
+        .stock-change.down {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--danger);
+        }
+
+        .stock-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+
+        .stock-card.expanded .stock-detail {
+            max-height: 80px;
+        }
+
+        .stock-detail-inner {
+            padding: 0 14px 14px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--hairline);
+            margin-top: 2px;
+            padding-top: 10px;
+        }
+
+        .stock-price-label {
+            font-family: var(--font-body);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stock-price-value {
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        /* INDICES */
+        .indices-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .index-box {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .index-name {
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .index-value {
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .index-change {
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .index-change.up { color: var(--success); }
+        .index-change.down { color: var(--danger); }
+
+        /* ARCHIVE / CALENDAR */
+        .archive-section {
+            margin-top: 40px;
+            padding: 20px 16px;
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--hairline);
+        }
+
+        .archive-title {
+            font-family: var(--font-heading);
+            font-size: 19px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cal-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .cal-nav-btn {
+            background: var(--card-bg-raised);
+            border: none;
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .cal-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .cal-month-label {
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .cal-dow {
+            text-align: center;
+            font-family: var(--font-body);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            padding-bottom: 4px;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: default;
+            color: var(--text-dim);
+            opacity: 0.35;
+        }
+
+        .cal-day.has-data {
+            background: var(--card-bg-raised);
+            color: var(--text);
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        .cal-day.has-data:hover {
+            background: var(--primary);
+        }
+
+        .cal-day.selected {
+            background: var(--secondary);
+            color: white;
+            font-weight: 700;
+            opacity: 1;
+        }
+
+        .back-today-btn {
+            display: none;
+            width: 100%;
+            margin-top: 14px;
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .back-today-btn.visible {
+            display: block;
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            text-align: center;
+            color: var(--text-faint);
+            font-family: var(--font-body);
+            font-size: 11px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 20px 16px;
+            }
+            .header-title { font-size: 36px; }
+            .stock-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+            .indices-row { grid-template-columns: repeat(4, 1fr); }
+            .section-title { font-size: 22px; }
+            .stock-tabs { max-width: 420px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-date" id="headerDate"></div>
+            <h1 class="header-title" id="headerTitle">Ładowanie...</h1>
+        </div>
+
+        <!-- POLITYKA USA -->
+        <div class="section" id="secPoliticaUS">
+            <h2 class="section-title"><span class="section-icon">🇺🇸</span> Polityka USA</h2>
+            <div id="politicaUS"></div>
+        </div>
+
+        <!-- POLITYKA POLSKA -->
+        <div class="section" id="secPoliticaPL">
+            <h2 class="section-title"><span class="section-icon">🇵🇱</span> Polska</h2>
+            <div id="politicaPolska"></div>
+        </div>
+
+        <!-- POLITYKA EUROPA -->
+        <div class="section" id="secPoliticaEU">
+            <h2 class="section-title"><span class="section-icon">🇪🇺</span> Europa</h2>
+            <div id="politicaEurope"></div>
+        </div>
+
+        <!-- GOSPODARKA -->
+        <div class="section" id="secEconomy">
+            <h2 class="section-title"><span class="section-icon">📊</span> Gospodarka</h2>
+            <div class="section-subtitle">USA</div>
+            <div id="economyUS"></div>
+            <div class="section-subtitle">UE / Chiny / Świat</div>
+            <div id="economyGlobal"></div>
+        </div>
+
+        <!-- INDEKSY -->
+        <div class="section">
+            <h2 class="section-title"><span class="section-icon">📈</span> Główne indeksy</h2>
+            <div class="indices-row" id="indicesContainer"></div>
+        </div>
+
+        <!-- GIEŁDA -->
+        <div class="section">
+            <h2 class="section-title"><span class="section-icon">💼</span> Giełda</h2>
+
+            <div class="stock-tabs">
+                <button class="stock-tab active" id="tabMine">Moje akcje</button>
+                <button class="stock-tab" id="tabWorld">Światowe spółki</button>
+            </div>
+            <div id="myStocks"></div>
+            <div id="worldStocks" style="display:none;"></div>
+
+            <div class="section-subtitle">Wiadomości rynkowe</div>
+            <div id="marketNews"></div>
+        </div>
+
+        <!-- ARCHIWUM -->
+        <div class="archive-section">
+            <div class="archive-title">📅 Archiwum</div>
+            <div class="cal-nav">
+                <button class="cal-nav-btn" id="prevMonthBtn">‹ Poprzedni</button>
+                <span class="cal-month-label" id="calMonthLabel"></span>
+                <button class="cal-nav-btn" id="nextMonthBtn">Następny ›</button>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+            <button class="back-today-btn" id="backTodayBtn">Wróć do dzisiaj</button>
+        </div>
+
+        <div class="footer">Daily Market Brief</div>
+    </div>
+
+    <script>
+        // ============ ZRODLO DANYCH ============
+        // Dane pochodza z plikow generowanych codziennie przez GitHub Actions:
+        //   data/manifest.json        -> lista dat, dla ktorych istnieja zapisane briefy
+        //   data/YYYY-MM-DD.json      -> tresc briefu dla danego dnia (zapisana raz, czytana potem bez zmian)
+        const DATA_DIR = 'data';
+        let MANIFEST = { dates: {} };
+        const BRIEF_CACHE = {};
+
+        async function loadManifest() {
+            const res = await fetch(`${DATA_DIR}/manifest.json`, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Brak manifestu danych');
+            MANIFEST = await res.json();
+        }
+
+        async function loadBrief(dateKey) {
+            if (BRIEF_CACHE[dateKey]) return BRIEF_CACHE[dateKey];
+            const res = await fetch(`${DATA_DIR}/${dateKey}.json`, { cache: 'force-cache' });
+            if (!res.ok) throw new Error(`Brak danych dla ${dateKey}`);
+            const brief = await res.json();
+            BRIEF_CACHE[dateKey] = brief;
+            return brief;
+        }
+
+        // Twoje akcje z eToro
+        const MY_STOCK_LIST = ['ASML','AMD','NVDA','OSCR','ZPRD','AMZN','CNDX','ELF','NOW','SXRS','IBCJ','GOOG','TTWO','BTC','META','SOFI'];
+
+        // Ważne spółki światowe spoza portfela
+        const WORLD_STOCK_LIST = ['TSM','SMSN','MC','NVO','NESN','TM','SAP','BABA','AZN','AAPL','MSFT','TSLA','AVGO','LLY','JPM','WMT','PLTR','NFLX','ORCL','COST'];
+        const WORLD_STOCK_NAMES = {
+            TSM: 'Taiwan Semiconductor', SMSN: 'Samsung Electronics', MC: 'LVMH', NVO: 'Novo Nordisk',
+            NESN: 'Nestlé', TM: 'Toyota Motor', SAP: 'SAP SE', BABA: 'Alibaba Group', AZN: 'AstraZeneca',
+            AAPL: 'Apple', MSFT: 'Microsoft', TSLA: 'Tesla', AVGO: 'Broadcom', LLY: 'Eli Lilly',
+            JPM: 'JPMorgan Chase', WMT: 'Walmart', PLTR: 'Palantir Technologies', NFLX: 'Netflix',
+            ORCL: 'Oracle', COST: 'Costco Wholesale'
+        };
+
+        // ============ POMOCNICZE ============
+        function fmtDate(dateKey) {
+            const d = new Date(dateKey + 'T07:30:00');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return d.toLocaleDateString('pl-PL', options) + ' • 07:30';
+        }
+
+        // Wyciąga pierwsze zdanie z tekstu (do widoku zwiniętego)
+        function firstSentence(text) {
+            const match = text.match(/^.*?[.!?](?=\s|$)/);
+            if (!match) return text;
+            return match[0];
+        }
+
+        // ============ RENDEROWANIE: rozwijane wiadomości ============
+        function renderExpandableList(containerId, items) {
+            const el = document.getElementById(containerId);
+            if (!items || items.length === 0) {
+                el.innerHTML = '<div class="section-empty">Brak ważnych informacji</div>';
+                return;
+            }
+            el.innerHTML = items.map((text, i) => {
+                const summary = firstSentence(text).trim();
+                const rest = text.slice(summary.length).trim();
+                const hasMore = rest.length > 0;
+                const itemId = containerId + '-' + i;
+                if (!hasMore) {
+                    return `
+                        <div class="item">
+                            <button class="item-toggle" disabled>
+                                <span class="item-summary">${summary}</span>
+                            </button>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="item" id="${itemId}">
+                        <button class="item-toggle" data-target="${itemId}">
+                            <span class="item-summary">${summary} <span class="ellipsis">…</span></span>
+                            <span class="item-caret">▶</span>
+                        </button>
+                        <div class="item-rest">
+                            <div class="item-rest-inner">${rest}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            el.querySelectorAll('.item-toggle[data-target]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById(btn.dataset.target).classList.toggle('expanded');
+                });
+            });
+        }
+
+        function renderIndices(data) {
+            const el = document.getElementById('indicesContainer');
+            el.innerHTML = data.map(idx => `
+                <div class="index-box">
+                    <div class="index-name">${idx.name}</div>
+                    <div class="index-value">${idx.value}</div>
+                    <div class="index-change ${idx.type}">${idx.change}</div>
+                </div>
+            `).join('');
+        }
+
+        // ============ RENDEROWANIE: rozwijane akcje (suwak z ceną) ============
+        function stockCardHtml(id, symbol, change, price, name) {
+            const type = change.startsWith('-') ? 'down' : 'up';
+            const hasPrice = !!price;
+            return `
+                <div class="stock-card" id="${id}">
+                    <button class="stock-toggle" ${hasPrice ? `data-target="${id}"` : 'disabled'}>
+                        <div class="stock-id">
+                            ${hasPrice ? '<span class="stock-caret">▶</span>' : ''}
+                            <div>
+                                <div class="stock-symbol">${symbol}</div>
+                                ${name ? `<div class="stock-name">${name}</div>` : ''}
+                            </div>
+                        </div>
+                        <div class="stock-change ${type}">${change}</div>
+                    </button>
+                    ${hasPrice ? `
+                        <div class="stock-detail">
+                            <div class="stock-detail-inner">
+                                <span class="stock-price-label">Bieżąca cena</span>
+                                <span class="stock-price-value">${price}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderStockGroup(containerId, stockMap, nameLookup) {
+            const el = document.getElementById(containerId);
+            const keys = Object.keys(stockMap);
+            if (keys.length === 0) {
+                el.innerHTML = '<div class="section-empty">Brak danych na ten dzień</div>';
+                return;
+            }
+            el.innerHTML = `<div class="stock-grid">` + keys.map((symbol, i) => {
+                const data = stockMap[symbol];
+                const name = nameLookup ? nameLookup[symbol] : null;
+                return stockCardHtml(containerId + '-' + i, symbol, data.change, data.price, name);
+            }).join('') + `</div>`;
+
+            el.querySelectorAll('.stock-toggle[data-target]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById(btn.dataset.target).classList.toggle('expanded');
+                });
+            });
+        }
+
+        // ============ ZAKŁADKI AKCJI ============
+        let activeStockTab = 'mine';
+
+        function setStockTab(tab) {
+            activeStockTab = tab;
+            document.getElementById('myStocks').style.display = tab === 'mine' ? '' : 'none';
+            document.getElementById('worldStocks').style.display = tab === 'world' ? '' : 'none';
+            document.getElementById('tabMine').classList.toggle('active', tab === 'mine');
+            document.getElementById('tabWorld').classList.toggle('active', tab === 'world');
+        }
+
+        document.getElementById('tabMine').addEventListener('click', () => setStockTab('mine'));
+        document.getElementById('tabWorld').addEventListener('click', () => setStockTab('world'));
+
+        function setLoading(isLoading) {
+            document.getElementById('headerTitle').textContent = isLoading ? 'Ładowanie…' : document.getElementById('headerTitle').textContent;
+            document.querySelector('.container').style.opacity = isLoading ? '0.5' : '1';
+        }
+
+        async function renderBrief(dateKey) {
+            setLoading(true);
+            let brief;
+            try {
+                brief = await loadBrief(dateKey);
+            } catch (err) {
+                document.getElementById('headerDate').textContent = fmtDate(dateKey);
+                document.getElementById('headerTitle').textContent = 'Brak zapisanych danych dla tego dnia';
+                setLoading(false);
+                return;
+            }
+
+            document.getElementById('headerDate').textContent = fmtDate(dateKey);
+            document.getElementById('headerTitle').textContent = brief.title;
+
+            if (brief.tradingDay === false) {
+                // Dzien bez sesji gieldowej - pokazujemy pusty, ale wyraznie oznaczony widok
+                renderExpandableList('politicaUS', brief.politicaUS);
+                renderExpandableList('politicaPolska', brief.politicaPolska);
+                renderExpandableList('politicaEurope', brief.politicaEurope);
+                renderExpandableList('economyUS', brief.economyUS);
+                renderExpandableList('economyGlobal', brief.economyGlobal);
+                document.getElementById('indicesContainer').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
+                document.getElementById('myStocks').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
+                document.getElementById('worldStocks').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
+                renderExpandableList('marketNews', brief.marketNews);
+            } else {
+                renderExpandableList('politicaUS', brief.politicaUS);
+                renderExpandableList('politicaPolska', brief.politicaPolska);
+                renderExpandableList('politicaEurope', brief.politicaEurope);
+                renderExpandableList('economyUS', brief.economyUS);
+                renderExpandableList('economyGlobal', brief.economyGlobal);
+                renderIndices(brief.indices);
+                renderStockGroup('myStocks', brief.myStocks, null);
+                renderStockGroup('worldStocks', brief.worldStocks, WORLD_STOCK_NAMES);
+                renderExpandableList('marketNews', brief.marketNews);
+            }
+
+            setStockTab(activeStockTab);
+            setLoading(false);
+
+            document.getElementById('backTodayBtn').classList.toggle('visible', dateKey !== TODAY_KEY);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ============ KALENDARZ ============
+        const now = new Date();
+        const TODAY_KEY = now.toISOString().split('T')[0];
+        let calYear = now.getFullYear();
+        let calMonth = now.getMonth(); // 0-indexed
+        let selectedDate = TODAY_KEY;
+
+        const MONTH_NAMES = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+        const DOW_NAMES = ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'];
+
+        function pad(n) { return n < 10 ? '0' + n : n; }
+
+        function dateKeyFor(y, m, d) {
+            return `${y}-${pad(m + 1)}-${pad(d)}`;
+        }
+
+        function renderCalendar() {
+            document.getElementById('calMonthLabel').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
+
+            const grid = document.getElementById('calGrid');
+            grid.innerHTML = DOW_NAMES.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+            const firstDay = new Date(calYear, calMonth, 1);
+            let startOffset = firstDay.getDay() - 1; // Monday = 0
+            if (startOffset < 0) startOffset = 6;
+
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+            for (let i = 0; i < startOffset; i++) {
+                grid.innerHTML += `<div class="cal-day"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const key = dateKeyFor(calYear, calMonth, day);
+                const hasData = !!MANIFEST.dates[key];
+                const isSelected = key === selectedDate;
+                const classes = ['cal-day'];
+                if (hasData) classes.push('has-data');
+                if (isSelected) classes.push('selected');
+
+                grid.innerHTML += `<div class="${classes.join(' ')}" data-key="${key}">${day}</div>`;
+            }
+
+            grid.querySelectorAll('.cal-day.has-data').forEach(el => {
+                el.addEventListener('click', () => {
+                    selectedDate = el.dataset.key;
+                    renderBrief(selectedDate);
+                    renderCalendar();
+                });
+            });
+
+            // Nawigacja - nie pozwól iść w przyszłość poza dzisiejszy miesiąc
+            const isCurrentOrFutureMonth = (calYear > now.getFullYear()) ||
+                (calYear === now.getFullYear() && calMonth >= now.getMonth());
+            document.getElementById('nextMonthBtn').disabled = isCurrentOrFutureMonth;
+        }
+
+        document.getElementById('prevMonthBtn').addEventListener('click', () => {
+            calMonth--;
+            if (calMonth < 0) { calMonth = 11; calYear--; }
+            renderCalendar();
+        });
+
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+            calMonth++;
+            if (calMonth > 11) { calMonth = 0; calYear++; }
+            renderCalendar();
+        });
+
+        document.getElementById('backTodayBtn').addEventListener('click', () => {
+            selectedDate = TODAY_KEY;
+            calYear = now.getFullYear();
+            calMonth = now.getMonth();
+            renderBrief(selectedDate);
+            renderCalendar();
+        });
+
+        // ============ START ============
+        async function init() {
+            try {
+                await loadManifest();
+            } catch (err) {
+                document.getElementById('headerTitle').textContent = 'Nie udało się wczytać danych';
+                document.getElementById('headerDate').textContent = 'Sprawdź połączenie lub spróbuj później';
+                return;
+            }
+
+            // Jeśli dzisiejsza data nie ma jeszcze zapisanego briefu (np. jeszcze się nie wygenerował),
+            // pokaż najnowszy dostępny dzień.
+            if (!MANIFEST.dates[TODAY_KEY]) {
+                const availableDates = Object.keys(MANIFEST.dates).sort().reverse();
+                selectedDate = availableDates[0] || TODAY_KEY;
+                const [y, m] = selectedDate.split('-').map(Number);
+                if (!isNaN(y)) { calYear = y; calMonth = m - 1; }
+            }
+
+            await renderBrief(selectedDate);
+            renderCalendar();
+        }
+
+        init();
+    </script>
+</body>
+</html>
