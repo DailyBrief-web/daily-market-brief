@@ -36,7 +36,7 @@ RSS_FEEDS = {
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.0-flash:generateContent?key={api_key}"
+    "gemini-3.6-flash:generateContent?key={api_key}"
 )
 
 
