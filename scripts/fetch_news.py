@@ -77,7 +77,7 @@ def collect_raw_headlines() -> dict:
     return collected
 
 
-def summarize_with_gemini(headlines_by_category: dict, api_key: str, tries: int = 3) -> dict:
+def summarize_with_gemini(headlines_by_category: dict, api_key: str, tries: int = 4) -> dict:
     """
     Wysyla zebrane naglowki do Gemini i prosi o gotowe, wyselekcjonowane
     wiadomosci po polsku w strukturze zgodnej ze strona.
@@ -123,13 +123,13 @@ Zwroc WYLACZNIE poprawny JSON w formacie:
     last_error = None
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=45) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
             text = result["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(text)
         except Exception as err:
             last_error = err
-            time.sleep(3 * (attempt + 1))  # 3s, 6s, 9s - proste wyczekanie przed ponowieniem
+            time.sleep(5 + attempt * 10)  # 5s, 15s, 25s, 35s - coraz dluzsza przerwa
 
     raise RuntimeError(f"Gemini nie odpowiedział po {tries} probach: {last_error}")
 
