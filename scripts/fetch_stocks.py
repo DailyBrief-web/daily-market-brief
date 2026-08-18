@@ -1,135 +1,128 @@
 """
-Pobiera ostatnia cene zamkniecia i zmiane % dla listy tickerow z Yahoo Finance
-(darmowe, bez klucza API, dziala z serwerow w chmurze - w przeciwienstwie do
-Stooq, ktory blokuje zakresy IP dostawcow chmurowych takich jak GitHub Actions).
+Pobiera ostatnia cene i zmiane % dla listy tickerow z Finnhub
+(oficjalne darmowe API z kluczem, w przeciwienstwie do Stooq/Yahoo dziala
+niezawodnie z serwerow w chmurze typu GitHub Actions - te dwa poprzednie
+darmowe zrodla bez klucza blokowaly zapytania z chmury).
 
-Dla kazdego symbolu pobieramy krotka historie dzienna i liczymy zmiane %
-miedzy dwoma ostatnimi sesjami.
+Wymaga zmiennej srodowiskowej FINNHUB_API_KEY (darmowy klucz z finnhub.io/register).
+Darmowy tier: 60 zapytan/minute, co w zupelnosci wystarcza do ~40 tickerow raz dziennie.
 
-Jesli jakis symbol nie mapuje sie poprawnie (np. spolka spoza USA notowana
-na innej gieldzie), trzeba poprawic YAHOO_MAP ponizej - w tej wersji sa to
-mapowania "najlepszego przyblizenia", warto zweryfikowac na finance.yahoo.com
-przed pierwszym uruchomieniem.
+UWAGA: darmowy tier Finnhub najpewniej dziala dla spolek notowanych w USA (w tym
+ADR-y takich firm jak ASML, TSM, SAP, BABA, NVO, AZN, TM - one wszystkie maja
+notowania na gieldach amerykanskich). Symbole notowane WYLACZNIE na gieldach
+pozaamerykanskich (np. londynskie ETF-y, paryskie/szwajcarskie akcje) moga nie
+byc dostepne na darmowym planie - wtedy po prostu znikaja z wyniku (bez bledu
+calego skryptu), warto to zweryfikowac i ew. podmienic na amerykanskie odpowiedniki.
 """
 import json
 import time
 import urllib.request
+import os
 
-YAHOO_MAP = {
-    # Twoje akcje
+# Twoje akcje - tickery Finnhub (przewaznie identyczne z popularnymi symbolami)
+MY_STOCK_SYMBOLS = {
     "NVDA": "NVDA", "ASML": "ASML", "AMD": "AMD", "OSCR": "OSCR",
-    "ZPRD": "ZPRD.L", "AMZN": "AMZN", "CNDX": "CNDX.L", "ELF": "ELF",
-    "NOW": "NOW", "SXRS": "SXRS.DE", "IBCJ": "IBCJ.L", "GOOG": "GOOG",
-    "TTWO": "TTWO", "BTC": "BTC-USD", "META": "META", "SOFI": "SOFI",
-    # Spolki swiatowe
-    "TSM": "TSM", "SMSN": "SMSN.L", "MC": "MC.PA", "NVO": "NVO",
-    "NESN": "NESN.SW", "TM": "TM", "SAP": "SAP", "BABA": "BABA",
+    "ZPRD": "ZPRD", "AMZN": "AMZN", "CNDX": None, "ELF": "ELF",
+    "NOW": "NOW", "SXRS": None, "IBCJ": None, "GOOG": "GOOG",
+    "TTWO": "TTWO", "BTC": "BINANCE:BTCUSDT", "META": "META", "SOFI": "SOFI",
+}
+
+WORLD_STOCK_SYMBOLS = {
+    "TSM": "TSM", "SMSN": None, "MC": None, "NVO": "NVO",
+    "NESN": None, "TM": "TM", "SAP": "SAP", "BABA": "BABA",
     "AZN": "AZN", "AAPL": "AAPL", "MSFT": "MSFT", "TSLA": "TSLA",
     "AVGO": "AVGO", "LLY": "LLY", "JPM": "JPM", "WMT": "WMT",
     "PLTR": "PLTR", "NFLX": "NFLX", "ORCL": "ORCL", "COST": "COST",
 }
 
-INDEX_MAP = {
-    "S&P 500": "^GSPC",
-    "NASDAQ": "^IXIC",
-    "Dow Jones": "^DJI",
-    "WIG20": "WIG20.WA",
+# Indeksy nie sa dostepne na darmowym planie Finnhub - uzywamy ETF-ow
+# sledzacych te same indeksy jako wiarygodnego przyblizenia.
+INDEX_PROXIES = {
+    "S&P 500": "SPY",
+    "NASDAQ": "QQQ",
+    "Dow Jones": "DIA",
 }
 
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    )
-}
+BASE_URL = "https://finnhub.io/api/v1/quote"
 
 
-def _fetch_chart(yahoo_symbol: str, tries: int = 3):
-    url = (
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
-        f"?range=5d&interval=1d"
-    )
+def _fetch_quote(symbol: str, api_key: str, tries: int = 2):
+    url = f"{BASE_URL}?symbol={symbol}&token={api_key}"
     for attempt in range(tries):
         try:
-            req = urllib.request.Request(url, headers=_HEADERS)
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(url, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            result = data.get("chart", {}).get("result")
-            if not result:
-                time.sleep(2 * (attempt + 1))
-                continue
-            closes = result[0]["indicators"]["quote"][0]["close"]
-            closes = [c for c in closes if c is not None]
-            currency = result[0].get("meta", {}).get("currency", "USD")
-            if len(closes) >= 2:
-                return closes, currency
+            # Finnhub zwraca c=0 dla nieznanych/niedostepnych symboli
+            if data.get("c") not in (None, 0):
+                return data
         except Exception:
-            time.sleep(2 * (attempt + 1))
-    return None, None
+            pass
+        time.sleep(1)
+    return None
 
 
-_CURRENCY_SYMBOL = {
-    "USD": "$", "EUR": "€", "GBP": "£", "GBp": "£", "CHF": "CHF ",
-    "JPY": "¥", "KRW": "₩", "PLN": "zł",
-}
+def _fmt_price(value: float) -> str:
+    return f"${value:,.2f}"
 
 
-def _fmt_price(value: float, currency: str) -> str:
-    symbol = _CURRENCY_SYMBOL.get(currency, currency + " ")
-    return f"{symbol}{value:,.2f}"
-
-
-def fetch_change_and_price(symbol: str, yahoo_symbol: str):
-    closes, currency = _fetch_chart(yahoo_symbol)
-    if not closes:
-        return None
-    last_close = closes[-1]
-    prev_close = closes[-2]
-    if prev_close == 0:
-        return None
-    pct = (last_close - prev_close) / prev_close * 100
-    sign = "+" if pct >= 0 else ""
-    return {
-        "change": f"{sign}{pct:.2f}%",
-        "price": _fmt_price(last_close, currency),
-    }
-
-
-def fetch_all_stocks(symbols: list[str]) -> dict:
+def _fetch_group(symbol_map: dict, api_key: str) -> dict:
     out = {}
-    for sym in symbols:
-        yahoo_symbol = YAHOO_MAP.get(sym)
-        if not yahoo_symbol:
+    for our_symbol, finnhub_symbol in symbol_map.items():
+        if not finnhub_symbol:
+            continue  # brak wiarygodnego mapowania - pomijamy
+        quote = _fetch_quote(finnhub_symbol, api_key)
+        if not quote:
             continue
-        result = fetch_change_and_price(sym, yahoo_symbol)
-        if result:
-            out[sym] = result
-        time.sleep(0.3)  # uprzejmosc wobec darmowego API
+        current = quote["c"]
+        pct = quote.get("dp", 0)
+        sign = "+" if pct >= 0 else ""
+        out[our_symbol] = {
+            "change": f"{sign}{pct:.2f}%",
+            "price": _fmt_price(current),
+        }
+        time.sleep(1.1)  # limit Finnhub free: 60/min -> ok. 1 zapytanie/sekunde
     return out
 
 
+def fetch_all_stocks(symbols: list[str]) -> dict:
+    """Zachowuje ten sam interfejs co poprzednie wersje (lista symboli) -
+    lista jest ignorowana na rzecz wewnetrznych map (MY/WORLD), bo Finnhub
+    wymaga osobnego mapowania na jego wlasne tickery."""
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if not api_key:
+        raise RuntimeError("Brak FINNHUB_API_KEY w zmiennych srodowiskowych")
+
+    if set(symbols) <= set(MY_STOCK_SYMBOLS.keys()):
+        return _fetch_group(MY_STOCK_SYMBOLS, api_key)
+    return _fetch_group(WORLD_STOCK_SYMBOLS, api_key)
+
+
 def fetch_indices() -> list[dict]:
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if not api_key:
+        raise RuntimeError("Brak FINNHUB_API_KEY w zmiennych srodowiskowych")
+
     out = []
-    for name, sym in INDEX_MAP.items():
-        closes, _ = _fetch_chart(sym)
-        if not closes:
+    for name, proxy_symbol in INDEX_PROXIES.items():
+        quote = _fetch_quote(proxy_symbol, api_key)
+        if not quote:
             continue
-        last_close = closes[-1]
-        prev_close = closes[-2]
-        if prev_close == 0:
-            continue
-        pct = (last_close - prev_close) / prev_close * 100
+        current = quote["c"]
+        pct = quote.get("dp", 0)
         sign = "+" if pct >= 0 else ""
         out.append({
             "name": name,
-            "value": f"{last_close:,.2f}",
+            "value": f"{current:,.2f}",
             "change": f"{sign}{pct:.2f}%",
             "type": "up" if pct >= 0 else "down",
         })
-        time.sleep(0.3)
+        time.sleep(1.1)
     return out
 
 
 if __name__ == "__main__":
-    data = fetch_all_stocks(list(YAHOO_MAP.keys()))
-    print(json.dumps(data, indent=2, ensure_ascii=False))
+    key = os.environ.get("FINNHUB_API_KEY")
+    if not key:
+        print("Ustaw zmienna FINNHUB_API_KEY przed testem.")
+    else:
+        print(json.dumps(_fetch_group(MY_STOCK_SYMBOLS, key), indent=2, ensure_ascii=False))
