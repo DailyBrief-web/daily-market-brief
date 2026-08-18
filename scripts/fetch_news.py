@@ -8,29 +8,37 @@ Wymaga zmiennej srodowiskowej GEMINI_API_KEY (darmowy klucz z aistudio.google.co
 """
 import json
 import os
+import time
 import urllib.request
 import xml.etree.ElementTree as ET
 
+def _google_news_rss(query: str, lang: str = "pl", country: str = "PL") -> str:
+    """Buduje URL do wyszukiwarki Google News RSS - darmowe, stabilne, bez klucza API."""
+    from urllib.parse import quote
+    return (
+        f"https://news.google.com/rss/search?q={quote(query)}"
+        f"&hl={lang}&gl={country}&ceid={country}:{lang}"
+    )
+
+
 RSS_FEEDS = {
     "politicaUS": [
-        "https://feeds.reuters.com/Reuters/PoliticsNews",
-        "https://rss.politico.com/politics-news.xml",
+        _google_news_rss("Trump White House politics", "en", "US"),
     ],
     "politicaPolska": [
-        "https://www.pap.pl/rss.xml",
+        _google_news_rss("polityka Polska Sejm rząd", "pl", "PL"),
     ],
     "politicaEurope": [
-        "https://feeds.reuters.com/reuters/UKPoliticsNews",
+        _google_news_rss("European Union politics", "en", "US"),
     ],
     "economyUS": [
-        "https://feeds.reuters.com/reuters/USbusinessNews",
+        _google_news_rss("US economy Federal Reserve inflation", "en", "US"),
     ],
     "economyGlobal": [
-        "https://feeds.reuters.com/reuters/businessNews",
+        _google_news_rss("global economy China EU economy", "en", "US"),
     ],
     "marketNews": [
-        "https://feeds.reuters.com/reuters/marketsNews",
-        "https://www.cnbc.com/id/10001147/device/rss/rss.html",
+        _google_news_rss("stock market earnings Wall Street", "en", "US"),
     ],
 }
 
@@ -69,7 +77,7 @@ def collect_raw_headlines() -> dict:
     return collected
 
 
-def summarize_with_gemini(headlines_by_category: dict, api_key: str) -> dict:
+def summarize_with_gemini(headlines_by_category: dict, api_key: str, tries: int = 3) -> dict:
     """
     Wysyla zebrane naglowki do Gemini i prosi o gotowe, wyselekcjonowane
     wiadomosci po polsku w strukturze zgodnej ze strona.
@@ -111,11 +119,19 @@ Zwroc WYLACZNIE poprawny JSON w formacie:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        result = json.loads(resp.read().decode("utf-8"))
 
-    text = result["candidates"][0]["content"]["parts"][0]["text"]
-    return json.loads(text)
+    last_error = None
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+            text = result["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text)
+        except Exception as err:
+            last_error = err
+            time.sleep(3 * (attempt + 1))  # 3s, 6s, 9s - proste wyczekanie przed ponowieniem
+
+    raise RuntimeError(f"Gemini nie odpowiedział po {tries} probach: {last_error}")
 
 
 def build_news_sections() -> dict:
