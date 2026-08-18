@@ -29,14 +29,28 @@ def build_title(status: dict) -> str:
     return "Podsumowanie dzisiejszej sesji"
 
 
+def load_existing_brief(date_str: str) -> dict | None:
+    """Jesli plik na dzisiaj juz istnieje (np. z poprzedniej proby), wczytaj go -
+    pozwala to na dopelnienie tylko brakujacych czesci zamiast nadpisywania calosci."""
+    path = os.path.join(DATA_DIR, f"{date_str}.json")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+
+def is_empty(value) -> bool:
+    return value is None or value == {} or value == []
+
+
 def build_brief_for_today() -> dict:
     today = date.today()
+    today_str = today.isoformat()
     status = session_status(today)
 
     if not status["us_open"] and not status["gpw_open"]:
-        # Nie ma sesji (weekend / swieto) - nie pobieramy kursow, zapisujemy pusty dzien
         return {
-            "date": today.isoformat(),
+            "date": today_str,
             "tradingDay": False,
             "title": "Gieldy zamkniete — brak dzisiejszej sesji",
             "politicaUS": [], "politicaPolska": [], "politicaEurope": [],
@@ -45,16 +59,70 @@ def build_brief_for_today() -> dict:
             "marketNews": ["Dzisiaj nie ma sesji gieldowej (weekend lub swieto)."],
         }
 
-    news = build_news_sections()
-    my_stocks = fetch_all_stocks(MY_STOCK_LIST)
-    world_stocks = fetch_all_stocks(WORLD_STOCK_LIST)
-    indices = fetch_indices()
+    existing = load_existing_brief(today_str)
+
+    # Jesli poprzednia proba juz zapisala kompletne dane, nic wiecej nie rob
+    # (np. przy zapasowym uruchomieniu pozniej tego samego dnia).
+    if existing and existing.get("tradingDay") and not is_empty(existing.get("marketNews")) \
+            and not is_empty(existing.get("myStocks")) and not is_empty(existing.get("indices")):
+        print("Dzisiejszy brief jest juz kompletny - nic do zrobienia.")
+        return existing
+
+    # Newsy i kursy sa od siebie niezalezne - jesli jedno padnie (np. chwilowy
+    # problem z Gemini), drugie i tak ma sie zapisac, zamiast tracic caly dzien.
+    # Jesli poprzednia proba juz cos zapisala poprawnie, nie probujemy tego ponownie.
+    if existing and not is_empty(existing.get("marketNews")):
+        news = {
+            "politicaUS": existing.get("politicaUS", []),
+            "politicaPolska": existing.get("politicaPolska", []),
+            "politicaEurope": existing.get("politicaEurope", []),
+            "economyUS": existing.get("economyUS", []),
+            "economyGlobal": existing.get("economyGlobal", []),
+            "marketNews": existing.get("marketNews", []),
+        }
+        print("Newsy z poprzedniej proby juz sa - pomijam ponowne pobieranie.")
+    else:
+        try:
+            news = build_news_sections()
+        except Exception as err:
+            print(f"UWAGA: nie udalo sie pobrac/podsumowac newsow: {err}")
+            news = {}
+
+    if existing and not is_empty(existing.get("myStocks")):
+        my_stocks = existing["myStocks"]
+        print("Kursy 'moich akcji' z poprzedniej proby juz sa - pomijam.")
+    else:
+        try:
+            my_stocks = fetch_all_stocks(MY_STOCK_LIST)
+        except Exception as err:
+            print(f"UWAGA: nie udalo sie pobrac 'moich akcji': {err}")
+            my_stocks = {}
+
+    if existing and not is_empty(existing.get("worldStocks")):
+        world_stocks = existing["worldStocks"]
+        print("Kursy spolek swiatowych z poprzedniej proby juz sa - pomijam.")
+    else:
+        try:
+            world_stocks = fetch_all_stocks(WORLD_STOCK_LIST)
+        except Exception as err:
+            print(f"UWAGA: nie udalo sie pobrac swiatowych spolek: {err}")
+            world_stocks = {}
+
+    if existing and not is_empty(existing.get("indices")):
+        indices = existing["indices"]
+        print("Indeksy z poprzedniej proby juz sa - pomijam.")
+    else:
+        try:
+            indices = fetch_indices()
+        except Exception as err:
+            print(f"UWAGA: nie udalo sie pobrac indeksow: {err}")
+            indices = []
 
     top_market_news = news.get("marketNews", [])
     title = top_market_news[0][:90] + "…" if top_market_news else build_title(status)
 
     return {
-        "date": today.isoformat(),
+        "date": today_str,
         "tradingDay": True,
         "title": title,
         "politicaUS": news.get("politicaUS", []),
