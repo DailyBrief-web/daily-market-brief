@@ -12,7 +12,7 @@ import os
 from datetime import date, datetime
 
 from fetch_news import build_news_sections
-from fetch_stocks import fetch_all_stocks, fetch_indices, YAHOO_MAP
+from fetch_stocks import fetch_all_stocks, fetch_indices
 from trading_calendar import session_status
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
