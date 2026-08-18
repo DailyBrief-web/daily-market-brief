@@ -1,6 +1,11 @@
 {
   "dates": {
-    "2026-08-17": { "tradingDay": true }
+    "2026-08-17": {
+      "tradingDay": true
+    },
+    "2026-08-18": {
+      "tradingDay": true
+    }
   },
-  "lastUpdated": "2026-08-17T22:00:00Z"
+  "lastUpdated": "2026-08-18T13:48:00.993843Z"
 }
