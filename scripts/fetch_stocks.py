@@ -1,97 +1,107 @@
 """
-Pobiera ostatnia cene zamkniecia i zmiane % dla listy tickerow ze Stooq
-(darmowe, bez klucza API). Dla kazdego symbolu pobieramy krotka historie
-dzienna i liczymy zmiane % miedzy dwoma ostatnimi sesjami.
+Pobiera ostatnia cene zamkniecia i zmiane % dla listy tickerow z Yahoo Finance
+(darmowe, bez klucza API, dziala z serwerow w chmurze - w przeciwienstwie do
+Stooq, ktory blokuje zakresy IP dostawcow chmurowych takich jak GitHub Actions).
 
-Jesli jakis symbol nie mapuje sie poprawnie na Stooq (np. spolka spoza
-USA notowana na innej gieldzie), trzeba poprawic STOOQ_MAP ponizej -
-w tej wersji sa to mapowania "najlepszego przyblizenia", niektore mogly
-sie zmienic - warto zweryfikowac na stooq.com/q/ przed pierwszym uruchomieniem.
+Dla kazdego symbolu pobieramy krotka historie dzienna i liczymy zmiane %
+miedzy dwoma ostatnimi sesjami.
+
+Jesli jakis symbol nie mapuje sie poprawnie (np. spolka spoza USA notowana
+na innej gieldzie), trzeba poprawic YAHOO_MAP ponizej - w tej wersji sa to
+mapowania "najlepszego przyblizenia", warto zweryfikowac na finance.yahoo.com
+przed pierwszym uruchomieniem.
 """
-import csv
-import io
+import json
 import time
 import urllib.request
 
-STOOQ_MAP = {
+YAHOO_MAP = {
     # Twoje akcje
-    "NVDA": "nvda.us", "ASML": "asml.us", "AMD": "amd.us", "OSCR": "oscr.us",
-    "ZPRD": "zprd.us", "AMZN": "amzn.us", "CNDX": "cndx.uk", "ELF": "elf.us",
-    "NOW": "now.us", "SXRS": "sxrs.uk", "IBCJ": "ibcj.uk", "GOOG": "goog.us",
-    "TTWO": "ttwo.us", "BTC": "btcusd", "META": "meta.us", "SOFI": "sofi.us",
+    "NVDA": "NVDA", "ASML": "ASML", "AMD": "AMD", "OSCR": "OSCR",
+    "ZPRD": "ZPRD.L", "AMZN": "AMZN", "CNDX": "CNDX.L", "ELF": "ELF",
+    "NOW": "NOW", "SXRS": "SXRS.DE", "IBCJ": "IBCJ.L", "GOOG": "GOOG",
+    "TTWO": "TTWO", "BTC": "BTC-USD", "META": "META", "SOFI": "SOFI",
     # Spolki swiatowe
-    "TSM": "tsm.us", "SMSN": "smsn.uk", "MC": "mc.fr", "NVO": "nvo.us",
-    "NESN": "nesn.sw", "TM": "tm.us", "SAP": "sap.us", "BABA": "baba.us",
-    "AZN": "azn.us", "AAPL": "aapl.us", "MSFT": "msft.us", "TSLA": "tsla.us",
-    "AVGO": "avgo.us", "LLY": "lly.us", "JPM": "jpm.us", "WMT": "wmt.us",
-    "PLTR": "pltr.us", "NFLX": "nflx.us", "ORCL": "orcl.us", "COST": "cost.us",
+    "TSM": "TSM", "SMSN": "SMSN.L", "MC": "MC.PA", "NVO": "NVO",
+    "NESN": "NESN.SW", "TM": "TM", "SAP": "SAP", "BABA": "BABA",
+    "AZN": "AZN", "AAPL": "AAPL", "MSFT": "MSFT", "TSLA": "TSLA",
+    "AVGO": "AVGO", "LLY": "LLY", "JPM": "JPM", "WMT": "WMT",
+    "PLTR": "PLTR", "NFLX": "NFLX", "ORCL": "ORCL", "COST": "COST",
 }
 
 INDEX_MAP = {
-    "S&P 500": "^spx",
-    "NASDAQ": "^ndq",
-    "Dow Jones": "^dji",
-    "WIG20": "^wig20",
+    "S&P 500": "^GSPC",
+    "NASDAQ": "^IXIC",
+    "Dow Jones": "^DJI",
+    "WIG20": "WIG20.WA",
+}
+
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
 }
 
 
-def _fetch_daily_series(stooq_symbol: str, tries: int = 3):
-    url = f"https://stooq.com/q/d/l/?s={stooq_symbol}&i=d"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        )
-    }
+def _fetch_chart(yahoo_symbol: str, tries: int = 3):
+    url = (
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
+        f"?range=5d&interval=1d"
+    )
     for attempt in range(tries):
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(url, headers=_HEADERS)
             with urllib.request.urlopen(req, timeout=10) as resp:
-                text = resp.read().decode("utf-8")
-            # Stooq czasem zwraca zwykly tekst z komunikatem o limicie zamiast CSV
-            if "Exceeded" in text or "exceeded" in text or not text.strip().startswith("Date"):
+                data = json.loads(resp.read().decode("utf-8"))
+            result = data.get("chart", {}).get("result")
+            if not result:
                 time.sleep(2 * (attempt + 1))
                 continue
-            rows = list(csv.DictReader(io.StringIO(text)))
-            if len(rows) >= 2:
-                return rows
+            closes = result[0]["indicators"]["quote"][0]["close"]
+            closes = [c for c in closes if c is not None]
+            currency = result[0].get("meta", {}).get("currency", "USD")
+            if len(closes) >= 2:
+                return closes, currency
         except Exception:
             time.sleep(2 * (attempt + 1))
-    return None
+    return None, None
 
 
-def _fmt_price(value: float, currency_hint: str = "$") -> str:
-    return f"{currency_hint}{value:,.2f}"
+_CURRENCY_SYMBOL = {
+    "USD": "$", "EUR": "€", "GBP": "£", "GBp": "£", "CHF": "CHF ",
+    "JPY": "¥", "KRW": "₩", "PLN": "zł",
+}
 
 
-def fetch_change_and_price(symbol: str, stooq_symbol: str, currency_hint="$"):
-    rows = _fetch_daily_series(stooq_symbol)
-    if not rows:
+def _fmt_price(value: float, currency: str) -> str:
+    symbol = _CURRENCY_SYMBOL.get(currency, currency + " ")
+    return f"{symbol}{value:,.2f}"
+
+
+def fetch_change_and_price(symbol: str, yahoo_symbol: str):
+    closes, currency = _fetch_chart(yahoo_symbol)
+    if not closes:
         return None
-    last = rows[-1]
-    prev = rows[-2]
-    try:
-        last_close = float(last["Close"])
-        prev_close = float(prev["Close"])
-    except (KeyError, ValueError):
-        return None
+    last_close = closes[-1]
+    prev_close = closes[-2]
     if prev_close == 0:
         return None
     pct = (last_close - prev_close) / prev_close * 100
     sign = "+" if pct >= 0 else ""
     return {
         "change": f"{sign}{pct:.2f}%",
-        "price": _fmt_price(last_close, currency_hint),
+        "price": _fmt_price(last_close, currency),
     }
 
 
 def fetch_all_stocks(symbols: list[str]) -> dict:
     out = {}
     for sym in symbols:
-        stooq_symbol = STOOQ_MAP.get(sym)
-        if not stooq_symbol:
+        yahoo_symbol = YAHOO_MAP.get(sym)
+        if not yahoo_symbol:
             continue
-        result = fetch_change_and_price(sym, stooq_symbol)
+        result = fetch_change_and_price(sym, yahoo_symbol)
         if result:
             out[sym] = result
         time.sleep(0.3)  # uprzejmosc wobec darmowego API
@@ -101,14 +111,12 @@ def fetch_all_stocks(symbols: list[str]) -> dict:
 def fetch_indices() -> list[dict]:
     out = []
     for name, sym in INDEX_MAP.items():
-        rows = _fetch_daily_series(sym)
-        if not rows or len(rows) < 2:
+        closes, _ = _fetch_chart(sym)
+        if not closes:
             continue
-        last, prev = rows[-1], rows[-2]
-        try:
-            last_close = float(last["Close"])
-            prev_close = float(prev["Close"])
-        except (KeyError, ValueError):
+        last_close = closes[-1]
+        prev_close = closes[-2]
+        if prev_close == 0:
             continue
         pct = (last_close - prev_close) / prev_close * 100
         sign = "+" if pct >= 0 else ""
@@ -123,6 +131,5 @@ def fetch_indices() -> list[dict]:
 
 
 if __name__ == "__main__":
-    import json
-    data = fetch_all_stocks(list(STOOQ_MAP.keys()))
+    data = fetch_all_stocks(list(YAHOO_MAP.keys()))
     print(json.dumps(data, indent=2, ensure_ascii=False))
