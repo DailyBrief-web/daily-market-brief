@@ -2,8 +2,13 @@ name: Daily Market Brief
 
 on:
   schedule:
+    # Glowne uruchomienie: 22:00 UTC w dni robocze, po zamknieciu sesji US
     - cron: '0 22 * * 1-5'
-  workflow_dispatch: {}
+    # Zapasowe uruchomienie: 2h pozniej, na wypadek gdyby glowne nie zdobylo
+    # wszystkich danych (np. Gemini akurat nie odpowiadal). Dzieki logice w
+    # generate_brief.py, to uruchomienie dopelni tylko to, czego brakuje.
+    - cron: '0 0 * * 2-6'
+  workflow_dispatch: {}   # pozwala odpalic recznie z zakladki Actions
 
 permissions:
   contents: write
