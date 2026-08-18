@@ -1,0 +1,73 @@
+{
+  "date": "2026-08-17",
+  "tradingDay": true,
+  "title": "Nvidia rośnie po dobrych wynikach, Fed wstrzymuje decyzję o stopach",
+  "politicaUS": [
+    "Trump ogłosił nowe cła na import stali z Chin, wchodzą w życie od 1 września. Ruch jest odpowiedzią na wcześniejsze restrykcje eksportowe Pekinu i może podnieść ceny surowców budowlanych w USA o kilka procent jeszcze w tym kwartale. Amerykańscy producenci samochodów oraz sprzętu AGD ostrzegają, że wyższe koszty stali przełożą się na ceny finalnych produktów już w czwartym kwartale. Departament Handlu zapowiedział dodatkowe kontrole pochodzenia surowca, by ograniczyć omijanie ceł przez pośredników z państw trzecich. Chiny zapowiedziały odwet w postaci ceł na amerykański soję i wieprzowinę. Analitycy oceniają, że nowa runda ceł może podbić inflację producencką w USA o 0,2-0,3 punktu procentowego."
+  ],
+  "politicaPolska": [
+    "Sejm przyjął w drugim czytaniu nowelizację ustawy budżetowej na 2027 rok, zwiększając wydatki na obronność do 4,2% PKB. Projekt trafi teraz do Senatu, gdzie opozycja zapowiada poprawki dotyczące finansowania służby zdrowia. Minister finansów podkreślił, że dodatkowe środki zostaną pokryte częściowo z emisji obligacji. Rynek zareagował spokojnie, rentowność polskich dziesięcioletnich obligacji pozostała stabilna na poziomie 5,3%. Analitycy oceniają, że utrzymanie deficytu poniżej 3% PKB będzie trudne bez dalszych cięć wydatków socjalnych. Prezydent zapowiedział analizę ustawy pod kątem zgodności z konstytucją."
+  ],
+  "politicaEurope": [
+    "Niemcy zapowiedziały pakiet inwestycyjny 50 mld euro w infrastrukturę energetyczną. Środki mają trafić głównie do sieci przesyłowych i magazynów energii. Rząd w Berlinie liczy, że inwestycje przyciągną też kapitał prywatny dzięki ulgom podatkowym. Komisja Europejska wstępnie pozytywnie oceniła projekt, choć zastrzegła, że część pomocy publicznej może wymagać notyfikacji. Analitycy spodziewają się, że plan wesprze niemiecki przemysł ciężki. Kurs euro do dolara nieznacznie się umocnił po ogłoszeniu szczegółów."
+  ],
+  "economyUS": [
+    "Fed pozostawił stopy procentowe bez zmian na poziomie 5,25-5,50%, sygnalizując możliwość cięć w czwartym kwartale. Przewodniczący podkreślił, że kluczowe będą kolejne odczyty inflacji bazowej oraz dane z rynku pracy. Inwestorzy wyceniają około 65% szans na obniżkę stóp o 25 punktów bazowych w grudniu. Rentowność dziesięcioletnich obligacji spadła do 4,12%. Sektor technologiczny i nieruchomości zareagowały wzrostami. Część analityków ostrzega, że zbyt wczesne złagodzenie polityki mogłoby ponownie rozpędzić inflację."
+  ],
+  "economyGlobal": [
+    "Chińskie władze ogłosiły pakiet stymulacyjny dla sektora nieruchomości, obniżając wymogi kapitałowe dla banków. Ludowy Bank Chin obniżył stopę referencyjną o 10 punktów bazowych. Indeks Shanghai Composite zyskał ponad 2%, a spółki deweloperskie jeszcze więcej. Eksperci są sceptyczni, czy same bodźce wystarczą, by odwrócić trwający od trzech lat kryzys na rynku nieruchomości. Eksport Chin w lipcu wzrósł o 4,8% r/r, mniej niż oczekiwano. Inwestorzy liczą na dalsze sygnały wsparcia przed wrześniowym posiedzeniem partii."
+  ],
+  "indices": [
+    { "name": "S&P 500", "value": "5,832", "change": "+0.42%", "type": "up" },
+    { "name": "NASDAQ", "value": "20,543", "change": "+0.68%", "type": "up" },
+    { "name": "Dow Jones", "value": "42,996", "change": "-0.15%", "type": "down" },
+    { "name": "WIG20", "value": "2,385", "change": "+1.12%", "type": "up" }
+  ],
+  "myStocks": {
+    "NVDA": { "change": "+2.15%", "price": "$187.42" },
+    "ASML": { "change": "-1.42%", "price": "€712.30" },
+    "AMD": { "change": "+0.89%", "price": "$164.05" },
+    "OSCR": { "change": "+0.12%", "price": "$18.94" },
+    "ZPRD": { "change": "+0.34%", "price": "$42.11" },
+    "AMZN": { "change": "+1.23%", "price": "$231.87" },
+    "CNDX": { "change": "+0.61%", "price": "$92.44" },
+    "ELF": { "change": "-0.87%", "price": "$121.30" },
+    "NOW": { "change": "+0.45%", "price": "$1,012.60" },
+    "SXRS": { "change": "+0.42%", "price": "$78.22" },
+    "IBCJ": { "change": "+1.12%", "price": "$56.19" },
+    "GOOG": { "change": "-0.56%", "price": "$196.73" },
+    "TTWO": { "change": "+0.21%", "price": "$198.40" },
+    "BTC": { "change": "+3.12%", "price": "$118,430" },
+    "META": { "change": "+3.45%", "price": "$612.88" },
+    "SOFI": { "change": "-2.34%", "price": "$9.87" }
+  },
+  "worldStocks": {
+    "TSM": { "change": "+1.80%", "price": "$215.30" },
+    "SMSN": { "change": "-0.40%", "price": "₩78,400" },
+    "MC": { "change": "+0.60%", "price": "€612.50" },
+    "NVO": { "change": "-1.20%", "price": "$92.10" },
+    "NESN": { "change": "+0.30%", "price": "CHF 88.40" },
+    "TM": { "change": "+0.90%", "price": "¥2,845" },
+    "SAP": { "change": "+1.10%", "price": "€248.70" },
+    "BABA": { "change": "+2.40%", "price": "$118.60" },
+    "AZN": { "change": "-0.30%", "price": "$78.90" },
+    "AAPL": { "change": "+0.34%", "price": "$231.05" },
+    "MSFT": { "change": "+1.60%", "price": "$468.20" },
+    "TSLA": { "change": "-4.21%", "price": "$241.60" },
+    "AVGO": { "change": "+2.10%", "price": "$186.40" },
+    "LLY": { "change": "-0.60%", "price": "$912.30" },
+    "JPM": { "change": "+0.40%", "price": "$224.80" },
+    "WMT": { "change": "+0.20%", "price": "$98.10" },
+    "PLTR": { "change": "+5.30%", "price": "$42.75" },
+    "NFLX": { "change": "-0.80%", "price": "$812.40" },
+    "ORCL": { "change": "+1.40%", "price": "$198.60" },
+    "COST": { "change": "+0.30%", "price": "$982.10" }
+  },
+  "marketNews": [
+    "Nvidia opublikowała wyniki finansowe powyżej oczekiwań analityków, notując przychody na poziomie 41 miliardów dolarów w minionym kwartale. Popyt na układy do centrów danych pozostaje silny, napędzany dalszymi inwestycjami dużych firm technologicznych w infrastrukturę AI. Zarząd podniósł prognozy na kolejny kwartał, wskazując na rosnące zamówienia z Azji i Bliskiego Wschodu. Konkurencyjne AMD zaprezentowało nową generację akceleratorów MI400. Akcje Nvidii zyskały ponad 2%, a AMD niemal 1%.",
+    "Microsoft ogłosił wyniki kwartalne powyżej oczekiwań, a akcje zyskały około 3%. Segment chmury Azure urósł o 34% r/r, napędzany popytem na usługi AI. Podobne wzrosty zaraportował Oracle, którego przychody z OCI zwiększyły się o 28%. Analitycy podnieśli rekomendacje dla obu spółek. Rynek zwraca uwagę na rosnące koszty inwestycyjne związane z budową centrów danych.",
+    "Akcje Tesli spadły o ponad 4% po niższych niż oczekiwano dostawach pojazdów. Analitycy wskazują na rosnącą konkurencję ze strony chińskiego BYD. Jednocześnie akcje Palantir wystrzeliły o ponad 5% po nowym kontrakcie z Departamentem Obrony USA. Spółka kontynuuje ekspansję poza sektor rządowy. Apple utrzymuje stabilny kurs przed premierą nowego iPhone'a we wrześniu.",
+    "Alibaba odnotowała wzrost przychodów o ponad 12% r/r, głównie dzięki segmentowi chmurowemu. Akcje zyskały na giełdzie w Hongkongu ponad 2%. TSMC poinformowało o rekordowych zamówieniach na procesy 2-nanometrowe. Samsung ogłosił plany zwiększenia inwestycji w pamięci HBM. Cały sektor półprzewodników w Azji zyskuje na fali popytu AI.",
+    "Berkshire Hathaway zwiększyło pozycję w Occidental Petroleum o kolejne 15 mln akcji. To już czwarty kwartał z rzędu zwiększania zaangażowania. JPMorgan Chase opublikował rekordowe przychody z bankowości inwestycyjnej. Bank podniósł prognozy dochodu odsetkowego netto. Indeks Fear & Greed wskazuje na 'Greed' — 68 punktów."
+  ]
+}
