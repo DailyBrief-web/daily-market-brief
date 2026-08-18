@@ -37,15 +37,26 @@ INDEX_MAP = {
 
 def _fetch_daily_series(stooq_symbol: str, tries: int = 3):
     url = f"https://stooq.com/q/d/l/?s={stooq_symbol}&i=d"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(url, timeout=10) as resp:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 text = resp.read().decode("utf-8")
+            # Stooq czasem zwraca zwykly tekst z komunikatem o limicie zamiast CSV
+            if "Exceeded" in text or "exceeded" in text or not text.strip().startswith("Date"):
+                time.sleep(2 * (attempt + 1))
+                continue
             rows = list(csv.DictReader(io.StringIO(text)))
             if len(rows) >= 2:
                 return rows
         except Exception:
-            time.sleep(1)
+            time.sleep(2 * (attempt + 1))
     return None
 
 
