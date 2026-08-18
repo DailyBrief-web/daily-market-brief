@@ -1,0 +1,33 @@
+name: Daily Market Brief
+
+on:
+  schedule:
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generuj dzisiejszy brief
+        working-directory: scripts
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_brief.py
+
+      - name: Zapisz dane do repo
+        run: |
+          git config user.name "daily-brief-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Brief: $(date -u +%Y-%m-%d)"
+          git push
