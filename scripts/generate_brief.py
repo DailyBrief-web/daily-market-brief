@@ -63,7 +63,7 @@ def build_brief_for_today() -> dict:
             "title": "Gieldy zamkniete — brak dzisiejszej sesji",
             "titleSource": None,
             "politicaUS": [], "politicaPolska": [], "politicaEurope": [],
-            "economyUS": [], "economyGlobal": [],
+            "economyUS": [], "economyEU": [], "economyIntl": [],
             "indices": [], "myStocks": {}, "worldStocks": {},
             "marketNews": ["Dzisiaj nie ma sesji gieldowej (weekend lub swieto)."],
         }
@@ -86,7 +86,8 @@ def build_brief_for_today() -> dict:
             "politicaPolska": existing.get("politicaPolska", []),
             "politicaEurope": existing.get("politicaEurope", []),
             "economyUS": existing.get("economyUS", []),
-            "economyGlobal": existing.get("economyGlobal", []),
+            "economyEU": existing.get("economyEU", []),
+            "economyIntl": existing.get("economyIntl", []),
             "marketNews": existing.get("marketNews", []),
         }
         print("Newsy z poprzedniej proby juz sa - pomijam ponowne pobieranie.")
@@ -144,7 +145,8 @@ def build_brief_for_today() -> dict:
         "politicaPolska": news.get("politicaPolska", []),
         "politicaEurope": news.get("politicaEurope", []),
         "economyUS": news.get("economyUS", []),
-        "economyGlobal": news.get("economyGlobal", []),
+        "economyEU": news.get("economyEU", []),
+        "economyIntl": news.get("economyIntl", []),
         "indices": indices,
         "myStocks": my_stocks,
         "worldStocks": world_stocks,
