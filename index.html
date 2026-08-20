@@ -371,6 +371,16 @@
             border-radius: 8px;
         }
 
+        .index-box.up {
+            background: rgba(0, 208, 132, 0.10);
+            border: 1px solid rgba(0, 208, 132, 0.25);
+        }
+
+        .index-box.down {
+            background: rgba(255, 107, 107, 0.10);
+            border: 1px solid rgba(255, 107, 107, 0.25);
+        }
+
         .index-name {
             font-family: var(--font-body);
             font-size: 12px;
@@ -695,7 +705,7 @@
         function renderIndices(data) {
             const el = document.getElementById('indicesContainer');
             el.innerHTML = data.map(idx => `
-                <div class="index-box">
+                <div class="index-box ${idx.type}">
                     <div class="index-name">${idx.name}</div>
                     <div class="index-value">${idx.value}</div>
                     <div class="index-change ${idx.type}">${idx.change}</div>
@@ -928,5 +938,4 @@
         init();
     </script>
 </body>
-</html>
 </html>
