@@ -51,8 +51,15 @@ RSS_FEEDS = {
         _google_news_rss("US economy Federal Reserve inflation", "en", "US"),
         _google_news_rss("US taxes economy policy", "en", "US"),
     ],
-    "economyGlobal": [
-        _google_news_rss("global economy China EU economy", "en", "US"),
+    "economyEU": [
+        _google_news_rss("Unia Europejska gospodarka decyzja", "pl", "PL"),
+        _google_news_rss("Polska gospodarka wskaźniki inflacja", "pl", "PL"),
+        _google_news_rss("EU economy policy decision", "en", "US"),
+    ],
+    "economyIntl": [
+        _google_news_rss("China Japan economy relations trade", "en", "US"),
+        _google_news_rss("Russia Venezuela sanctions economy", "en", "US"),
+        _google_news_rss("international trade agreement economy", "en", "US"),
     ],
     "marketNews": [
         _google_news_rss("stock market earnings Wall Street", "en", "US"),
@@ -194,6 +201,21 @@ spoza tej listy, jesli jest swiezy i faktycznie istotny:
 - glupie lub osmieszajace wypowiedzi polskich politykow - to celowo
   dozwolone jako urozmaicenie, nie tylko "powazne" tematy sie licza.
 
+PRZYKLADOWE (NIE WYCZERPUJACE) KATEGORIE TEMATOW DLA "economyEU":
+Gospodarka Unii Europejskiej ORAZ Polski razem (Polska jako czesc UE) -
+decyzje EBC, wskazniki gospodarcze Polski i UE, polityka gospodarcza
+Komisji Europejskiej, budzet UE, regulacje wplywajace na polska/europejska
+gospodarke. To rowniez tylko inspiracja, nie zamkniety zestaw kryteriow.
+
+PRZYKLADOWE (NIE WYCZERPUJACE) KATEGORIE TEMATOW DLA "economyIntl":
+Ta kategoria dotyczy gospodarczych relacji i wzajemnego oddzialywania MIEDZY
+krajami spoza UE/Polski/USA (te maja juz wlasne kategorie) - np. Chiny,
+Japonia, Rosja, Wenezuela, Indie i inne panstwa. Szukaj: umow handlowych
+i ich zerwania, sankcji gospodarczych, sojuszy lub napiec ekonomicznych
+miedzy panstwami, wzajemnych zaleznosci handlowych, wielkich transakcji
+miedzynarodowych. To rowniez tylko inspiracja, nie zamkniety zestaw kryteriow -
+liczy sie kazda swieza, konkretna relacja gospodarcza miedzy krajami.
+
 Wymagania:
 - Kazda wiadomosc PO POLSKU (patrz sekcja KONKRETNOSC TRESCI powyzej co do dlugosci).
 - Pisz naturalnym jezykiem dziennikarskim, pierwsze zdanie musi streszczac sedno.
@@ -210,7 +232,8 @@ Zwroc WYLACZNIE poprawny JSON w formacie:
   "politicaPolska": ["..."],
   "politicaEurope": ["..."],
   "economyUS": ["..."],
-  "economyGlobal": ["..."],
+  "economyEU": ["..."],
+  "economyIntl": ["..."],
   "marketNews": ["...", "...", "...", "...", "..."]
 }}
 """
