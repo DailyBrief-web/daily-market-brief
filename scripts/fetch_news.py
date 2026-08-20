@@ -134,25 +134,26 @@ dany temat/wydarzenie POWTARZA SIE w roznych naglowkach w obrebie kategorii.
    konkretow > pojedyncze wypowiedzi).
    Jesli w kategorii nic waznego nie ma - zwroc pusta liste [].
 
-SWIEZOSC (rownie kluczowe):
-Naglowki zostaly juz wstepnie odfiltrowane pod katem daty publikacji, ale
-mimo to badz czujny - jesli jakis naglowek opisuje wydarzenie, ktore wg
-Twojej wiedzy jest OGOLNIE ZNANE od dluzszego czasu (np. "porazka polityczna
-X" ktora jest powszechnie komentowana od dawna, a nie z ostatniej doby) -
+SWIEZOSC (NADRZEDNA ZASADA, dotyczy WSZYSTKICH kategorii):
+Naglowki zostaly juz wstepnie odfiltrowane pod katem daty publikacji (tylko
+ostatnie ~24-30h), ale mimo to badz czujny - jesli jakis naglowek opisuje
+wydarzenie, ktore wg Twojej wiedzy jest OGOLNIE ZNANE od dluzszego czasu
+(np. temat powszechnie komentowany od dawna, a nie z ostatniej doby) -
 POMIN go, nawet jesli formalnie przeszedl filtr daty. Priorytet maja
-KONKRETNE, SWIEZE wydarzenia z ostatnich 24h (decyzje, glosowania, ogloszenia),
-a nie kontynuacje/analizy starszych, juz "oswojonych" tematow.
+KONKRETNE, SWIEZE wydarzenia z ostatnich 24h (decyzje, glosowania, ogloszenia,
+wydarzenia), a nie kontynuacje/analizy starszych, juz "oswojonych" tematow.
+Im swiezsze wydarzenie (blizej dzisiaj), tym wyzszy priorytet - to
+wazniejsze kryterium niz to, do jakiej kategorii tematycznej temat pasuje.
 
-SPECJALNE ZASADY DLA KATEGORII "politicaPolska":
+JASNOSC PRZEKAZU (obowiazkowe, dotyczy WSZYSTKICH kategorii): pisz
+jednoznacznie i konkretnie - podawaj nazwy ustaw, kwoty, konkretne decyzje,
+nazwiska, instytucje. Unikaj metnych, niejednoznacznych sformulowan typu
+"wazne zmiany" bez podania jakie.
 
-NADRZEDNA ZASADA: SORTOWANIE CZASOWE. Im swiezsze wydarzenie (blizej dzisiaj),
-tym wyzszy priorytet - to najwazniejsze kryterium, wazniejsze niz to, do
-jakiej ponizszej kategorii temat pasuje.
-
-Ponizsze punkty to PRZYKLADOWE, NIE WYCZERPUJACE kategorie tematow wartych
-uwagi - to inspiracja czego szukac, a nie zamkniete kryteria wykluczajace.
-Rownie dobrze wartym uwagi tematem moze byc cos spoza tej listy, jesli jest
-swiezy i faktycznie istotny:
+PRZYKLADOWE (NIE WYCZERPUJACE) KATEGORIE TEMATOW DLA "politicaPolska":
+Ponizsze to inspiracja czego szukac w tej kategorii, a nie zamkniete
+kryteria wykluczajace - rownie dobrze wartym uwagi tematem moze byc cos
+spoza tej listy, jesli jest swiezy i faktycznie istotny:
 - przeglosowane ustawy, zatwierdzone budzety, zmiany podatkowe,
 - oficjalne decyzje rzadow (Polska, USA, panstwa UE),
 - wiazace regulacje gospodarcze, przelomowe wyroki sadow wyzszych instancji
@@ -163,13 +164,6 @@ swiezy i faktycznie istotny:
   wewnetrzne rozlamy, kryzysy lub konflikty w partiach politycznych,
 - glupie lub osmieszajace wypowiedzi polskich politykow - to celowo
   dozwolone jako urozmaicenie, nie tylko "powazne" tematy sie licza.
-
-Oceniaj kazdy dzien indywidualnie wedlug tego, co faktycznie sie wydarzylo
-i jest swieze - nie ograniczaj sie sztywno do powyzszej listy kategorii.
-
-JASNOSC PRZEKAZU (obowiazkowe): pisz jednoznacznie i konkretnie - podawaj
-nazwy ustaw, kwoty, konkretne decyzje, nazwiska. Unikaj metnych,
-niejednoznacznych sformulowan typu "wazne zmiany" bez podania jakie.
 
 Wymagania:
 - Kazda wiadomosc PO POLSKU, MINIMUM 5 zdan, konkretna, bez lania wody.
