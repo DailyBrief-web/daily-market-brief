@@ -85,6 +85,16 @@
             letter-spacing: 0.2px;
         }
 
+        .header-source {
+            font-family: var(--font-body);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
         /* SECTION */
         .section {
             margin-bottom: 32px;
@@ -300,6 +310,16 @@
         .stock-change.down {
             background: rgba(255, 107, 107, 0.15);
             color: var(--danger);
+        }
+
+        .stock-card.up {
+            background: rgba(0, 208, 132, 0.10);
+            border: 1px solid rgba(0, 208, 132, 0.25);
+        }
+
+        .stock-card.down {
+            background: rgba(255, 107, 107, 0.10);
+            border: 1px solid rgba(255, 107, 107, 0.25);
         }
 
         .stock-detail {
@@ -521,23 +541,17 @@
         <div class="header">
             <div class="header-date" id="headerDate"></div>
             <h1 class="header-title" id="headerTitle">Ładowanie...</h1>
+            <div class="header-source" id="headerSource" style="display:none;"></div>
         </div>
 
-        <!-- POLITYKA USA -->
-        <div class="section" id="secPoliticaUS">
-            <h2 class="section-title"><span class="section-icon">🇺🇸</span> Polityka USA</h2>
+        <!-- POLITYKA -->
+        <div class="section" id="secPolitics">
+            <h2 class="section-title"><span class="section-icon">🏛️</span> Polityka</h2>
+            <div class="section-subtitle">USA</div>
             <div id="politicaUS"></div>
-        </div>
-
-        <!-- POLITYKA POLSKA -->
-        <div class="section" id="secPoliticaPL">
-            <h2 class="section-title"><span class="section-icon">🇵🇱</span> Polska</h2>
+            <div class="section-subtitle">Polska</div>
             <div id="politicaPolska"></div>
-        </div>
-
-        <!-- POLITYKA EUROPA -->
-        <div class="section" id="secPoliticaEU">
-            <h2 class="section-title"><span class="section-icon">🇪🇺</span> Europa</h2>
+            <div class="section-subtitle">Europa</div>
             <div id="politicaEurope"></div>
         </div>
 
@@ -611,7 +625,7 @@
         }
 
         // Twoje akcje z eToro
-        const MY_STOCK_LIST = ['ASML','AMD','NVDA','OSCR','ZPRD','AMZN','CNDX','ELF','NOW','SXRS','IBCJ','GOOG','TTWO','BTC','META','SOFI'];
+        const MY_STOCK_LIST = ['ASML','AMD','NVDA','OSCR','ZPRD','AMZN','CNDX','ELF','NOW','SXRS','IBCJ','GOOG','TTWO','BTC','XRP','META','SOFI'];
 
         // Ważne spółki światowe spoza portfela
         const WORLD_STOCK_LIST = ['TSM','SMSN','MC','NVO','NESN','TM','SAP','BABA','AZN','AAPL','MSFT','TSLA','AVGO','LLY','JPM','WMT','PLTR','NFLX','ORCL','COST'];
@@ -661,7 +675,7 @@
                 return `
                     <div class="item" id="${itemId}">
                         <button class="item-toggle" data-target="${itemId}">
-                            <span class="item-summary">${summary} <span class="ellipsis">…</span></span>
+                            <span class="item-summary">${summary}</span>
                             <span class="item-caret">▶</span>
                         </button>
                         <div class="item-rest">
@@ -694,7 +708,7 @@
             const type = change.startsWith('-') ? 'down' : 'up';
             const hasPrice = !!price;
             return `
-                <div class="stock-card" id="${id}">
+                <div class="stock-card ${type}" id="${id}">
                     <button class="stock-toggle" ${hasPrice ? `data-target="${id}"` : 'disabled'}>
                         <div class="stock-id">
                             ${hasPrice ? '<span class="stock-caret">▶</span>' : ''}
@@ -764,12 +778,21 @@
             } catch (err) {
                 document.getElementById('headerDate').textContent = fmtDate(dateKey);
                 document.getElementById('headerTitle').textContent = 'Brak zapisanych danych dla tego dnia';
+                document.getElementById('headerSource').style.display = 'none';
                 setLoading(false);
                 return;
             }
 
             document.getElementById('headerDate').textContent = fmtDate(dateKey);
             document.getElementById('headerTitle').textContent = brief.title;
+
+            const sourceEl = document.getElementById('headerSource');
+            if (brief.titleSource) {
+                sourceEl.textContent = brief.titleSource;
+                sourceEl.style.display = '';
+            } else {
+                sourceEl.style.display = 'none';
+            }
 
             if (brief.tradingDay === false) {
                 // Dzien bez sesji gieldowej - pokazujemy pusty, ale wyraznie oznaczony widok
@@ -905,4 +928,5 @@
         init();
     </script>
 </body>
+</html>
 </html>
