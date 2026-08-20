@@ -9,6 +9,7 @@ Glowny skrypt - uruchamiany codziennie przez GitHub Actions.
 """
 import json
 import os
+import re
 from datetime import date, datetime
 
 from fetch_news import build_news_sections
@@ -18,7 +19,7 @@ from trading_calendar import session_status
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 MY_STOCK_LIST = ['ASML','AMD','NVDA','OSCR','ZPRD','AMZN','CNDX','ELF','NOW',
-                  'SXRS','IBCJ','GOOG','TTWO','BTC','META','SOFI']
+                  'SXRS','IBCJ','GOOG','TTWO','BTC','XRP','META','SOFI']
 WORLD_STOCK_LIST = ['TSM','SMSN','MC','NVO','NESN','TM','SAP','BABA','AZN','AAPL',
                      'MSFT','TSLA','AVGO','LLY','JPM','WMT','PLTR','NFLX','ORCL','COST']
 
@@ -27,6 +28,13 @@ def build_title(status: dict) -> str:
     if not status["us_open"] and not status["gpw_open"]:
         return "Gieldy zamkniete — brak dzisiejszej sesji"
     return "Podsumowanie dzisiejszej sesji"
+
+
+def first_sentence(text: str) -> str:
+    """Wyciaga pierwsze pelne zdanie z tekstu - uzywane do tytulu, zeby nie
+    ucinac w polowie slowa i nie doklejac wielokropka."""
+    match = re.match(r"^.*?[.!?](?=\s|$)", text)
+    return match.group(0).strip() if match else text.strip()
 
 
 def load_existing_brief(date_str: str) -> dict | None:
@@ -53,6 +61,7 @@ def build_brief_for_today() -> dict:
             "date": today_str,
             "tradingDay": False,
             "title": "Gieldy zamkniete — brak dzisiejszej sesji",
+            "titleSource": None,
             "politicaUS": [], "politicaPolska": [], "politicaEurope": [],
             "economyUS": [], "economyGlobal": [],
             "indices": [], "myStocks": {}, "worldStocks": {},
@@ -119,12 +128,18 @@ def build_brief_for_today() -> dict:
             indices = []
 
     top_market_news = news.get("marketNews", [])
-    title = top_market_news[0][:90] + "…" if top_market_news else build_title(status)
+    if top_market_news:
+        title = first_sentence(top_market_news[0])
+        title_source = "💼 Giełda — Wiadomości rynkowe"
+    else:
+        title = build_title(status)
+        title_source = None
 
     return {
         "date": today_str,
         "tradingDay": True,
         "title": title,
+        "titleSource": title_source,
         "politicaUS": news.get("politicaUS", []),
         "politicaPolska": news.get("politicaPolska", []),
         "politicaEurope": news.get("politicaEurope", []),
