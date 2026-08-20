@@ -1,63 +1,103 @@
 """
-1. Sciaga naglowki + skroty z darmowych kanalow RSS (polityka PL/US/EU, gospodarka, rynki).
-2. Wysyla je do darmowego API Gemini z prosba o wyselekcjonowanie najwazniejszych
-   wiadomosci i napisanie ich po polsku, min. 5 zdan kazda, w formacie JSON
-   pasujacym do struktury strony.
+Pobiera ostatnia cene i zmiane % dla listy tickerow z Finnhub
+(oficjalne darmowe API z kluczem, w przeciwienstwie do Stooq/Yahoo dziala
+niezawodnie z serwerow w chmurze typu GitHub Actions - te dwa poprzednie
+darmowe zrodla bez klucza blokowaly zapytania z chmury).
 
-Wymaga zmiennej srodowiskowej GEMINI_API_KEY (darmowy klucz z aistudio.google.com).
+Wymaga zmiennej srodowiskowej FINNHUB_API_KEY (darmowy klucz z finnhub.io/register).
+Darmowy tier: 60 zapytan/minute, co w zupelnosci wystarcza do ~40 tickerow raz dziennie.
+
+UWAGA: darmowy tier Finnhub najpewniej dziala dla spolek notowanych w USA (w tym
+ADR-y takich firm jak ASML, TSM, SAP, BABA, NVO, AZN, TM - one wszystkie maja
+notowania na gieldach amerykanskich). Symbole notowane WYLACZNIE na gieldach
+pozaamerykanskich (np. londynskie ETF-y, paryskie/szwajcarskie akcje) moga nie
+byc dostepne na darmowym planie - wtedy po prostu znikaja z wyniku (bez bledu
+calego skryptu), warto to zweryfikowac i ew. podmienic na amerykanskie odpowiedniki.
 """
 import json
-import os
 import time
 import urllib.request
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
+import os
 
-def _google_news_rss(query: str, lang: str = "pl", country: str = "PL") -> str:
-    """Buduje URL do wyszukiwarki Google News RSS - darmowe, stabilne, bez klucza API.
-    Dodajemy 'when:1d', zeby Google zwracal TYLKO artykuly z ostatnich 24h -
-    bez tego wyszukiwarka zwraca tez starsze, wciaz "trafne" tematycznie
-    artykuly (np. analizy sprzed kilku dni), co psuje swiezosc briefu."""
-    from urllib.parse import quote
-    query_with_freshness = f"{query} when:1d"
-    return (
-        f"https://news.google.com/rss/search?q={quote(query_with_freshness)}"
-        f"&hl={lang}&gl={country}&ceid={country}:{lang}"
-    )
-
-
-RSS_FEEDS = {
-    "politicaUS": [
-        _google_news_rss("Trump White House politics", "en", "US"),
-        _google_news_rss("US Congress legislation vote", "en", "US"),
-    ],
-    "politicaPolska": [
-        _google_news_rss("polityka Polska Sejm rząd", "pl", "PL"),
-        _google_news_rss("Sejm ustawa uchwalona budżet", "pl", "PL"),
-        _google_news_rss("Polska podatki decyzja rządu", "pl", "PL"),
-        _google_news_rss("Trybunał Konstytucyjny wyrok Sąd Najwyższy", "pl", "PL"),
-        _google_news_rss("Tusk premier oświadczenie", "pl", "PL"),
-        _google_news_rss("prezydent Nawrocki", "pl", "PL"),
-        _google_news_rss("Trzaskowski spotkanie wizyta", "pl", "PL"),
-        _google_news_rss("partia polityczna rozłam kryzys", "pl", "PL"),
-        _google_news_rss("polski polityk wypowiedź kontrowersja", "pl", "PL"),
-    ],
-    "politicaEurope": [
-        _google_news_rss("European Union politics", "en", "US"),
-        _google_news_rss("EU Brussels decision policy", "en", "US"),
-    ],
-    "economyUS": [
-        _google_news_rss("US economy Federal Reserve inflation", "en", "US"),
-        _google_news_rss("US taxes economy policy", "en", "US"),
-    ],
-    "economyGlobal": [
-        _google_news_rss("global economy China EU economy", "en", "US"),
-    ],
-    "marketNews": [
-        _google_news_rss("stock market earnings Wall Street", "en", "US"),
-    ],
+# Twoje akcje - tickery Finnhub (przewaznie identyczne z popularnymi symbolami)
+MY_STOCK_SYMBOLS = {
+    "NVDA": "NVDA", "ASML": "ASML", "AMD": "AMD", "OSCR": "OSCR",
+    "ZPRD": "ZPRD", "AMZN": "AMZN", "CNDX": None, "ELF": "ELF",
+    "NOW": "NOW", "SXRS": None, "IBCJ": None, "GOOG": "GOOG",
+    "TTWO": "TTWO", "BTC": "BINANCE:BTCUSDT", "XRP": "BINANCE:XRPUSDT",
+    "META": "META", "SOFI": "SOFI",
 }
+
+WORLD_STOCK_SYMBOLS = {
+    "TSM": "TSM", "SMSN": None, "MC": None, "NVO": "NVO",
+    "NESN": None, "TM": "TM", "SAP": "SAP", "BABA": "BABA",
+    "AZN": "AZN", "AAPL": "AAPL", "MSFT": "MSFT", "TSLA": "TSLA",
+    "AVGO": "AVGO", "LLY": "LLY", "JPM": "JPM", "WMT": "WMT",
+    "PLTR": "PLTR", "NFLX": "NFLX", "ORCL": "ORCL", "COST": "COST",
+}
+
+# Nazwy indeksow, o ktore pytamy Gemini (z wlaczonym wyszukiwaniem w internecie -
+# patrz fetch_indices() i _ask_gemini_for_index() nizej). Nie probujemy juz
+# pobierac ich z Finnhub, bo darmowy plan i tak zwykle ich nie obejmuje.
+INDEX_SYMBOLS = {
+    "S&P 500": None,
+    "NASDAQ": None,
+    "WIG20": None,
+}
+
+BASE_URL = "https://finnhub.io/api/v1/quote"
+
+
+def _fetch_quote(symbol: str, api_key: str, tries: int = 2):
+    url = f"{BASE_URL}?symbol={symbol}&token={api_key}"
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            # Finnhub zwraca c=0 dla nieznanych/niedostepnych symboli
+            if data.get("c") not in (None, 0):
+                return data
+        except Exception:
+            pass
+        time.sleep(1)
+    return None
+
+
+def _fmt_price(value: float) -> str:
+    return f"${value:,.2f}"
+
+
+def _fetch_group(symbol_map: dict, api_key: str) -> dict:
+    out = {}
+    for our_symbol, finnhub_symbol in symbol_map.items():
+        if not finnhub_symbol:
+            continue  # brak wiarygodnego mapowania - pomijamy
+        quote = _fetch_quote(finnhub_symbol, api_key)
+        if not quote:
+            continue
+        current = quote["c"]
+        pct = quote.get("dp", 0)
+        sign = "+" if pct >= 0 else ""
+        out[our_symbol] = {
+            "change": f"{sign}{pct:.2f}%",
+            "price": _fmt_price(current),
+        }
+        time.sleep(1.1)  # limit Finnhub free: 60/min -> ok. 1 zapytanie/sekunde
+    return out
+
+
+def fetch_all_stocks(symbols: list[str]) -> dict:
+    """Zachowuje ten sam interfejs co poprzednie wersje (lista symboli) -
+    lista jest ignorowana na rzecz wewnetrznych map (MY/WORLD), bo Finnhub
+    wymaga osobnego mapowania na jego wlasne tickery."""
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if not api_key:
+        raise RuntimeError("Brak FINNHUB_API_KEY w zmiennych srodowiskowych")
+
+    if set(symbols) <= set(MY_STOCK_SYMBOLS.keys()):
+        return _fetch_group(MY_STOCK_SYMBOLS, api_key)
+    return _fetch_group(WORLD_STOCK_SYMBOLS, api_key)
+
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -65,159 +105,76 @@ GEMINI_URL = (
 )
 
 
-def _fetch_rss(url: str, limit: int = 20, max_age_hours: int = 30) -> list[str]:
-    """Pobiera naglowki, ODRZUCAJAC te starsze niz max_age_hours - to twarda
-    gwarancja swiezosci, niezalezna od tego, czy Google poprawnie zastosuje
-    filtr 'when:1d' w URL (czasem nie stosuje go idealnie)."""
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read()
-        root = ET.fromstring(raw)
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
-        items = []
-        for item in root.iter("item"):
-            title = item.findtext("title") or ""
-            desc = item.findtext("description") or ""
-            pub_date_raw = item.findtext("pubDate") or ""
-            if not title:
-                continue
-            try:
-                pub_date = parsedate_to_datetime(pub_date_raw)
-                if pub_date.tzinfo is None:
-                    pub_date = pub_date.replace(tzinfo=timezone.utc)
-                if pub_date < cutoff:
-                    continue  # za stary artykul - pomijamy
-            except Exception:
-                pass  # brak/bledna data - nie odrzucamy w ciemno, ale tez nie ufamy w 100%
-            items.append(f"{title.strip()} — {desc.strip()[:200]}")
-            if len(items) >= limit:
-                break
-        return items
-    except Exception:
-        return []
+def _ask_gemini_for_index(name: str, gemini_api_key: str):
+    """Ostatnia linia obrony, gdy Finnhub nie ma danych dla danego indeksu.
+    WAZNE: model NIE zgaduje - pytamy go z wlaczonym narzedziem wyszukiwania
+    w Google (google_search), wiec faktycznie sprawdza aktualne zrodla w
+    internecie zamiast halucynowac liczbe. Jesli nie znajdzie wiarygodnych
+    danych, ma zwrocic null zamiast czegokolwiek zmyslac."""
+    prompt = f"""Wyszukaj w internecie AKTUALNA wartosc zamkniecia dzisiejszej
+sesji gieldowej dla indeksu "{name}" oraz procentowa zmiane wzgledem
+poprzedniej sesji. Uzyj wyszukiwarki, nie zgaduj i nie szacuj z pamieci.
+Jesli nie znajdziesz wiarygodnych, aktualnych danych - zwroc null w obu polach.
+Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
+{{"value": <liczba lub null>, "change_pct": <liczba, dodatnia lub ujemna, lub null>}}"""
 
-
-def collect_raw_headlines() -> dict:
-    collected = {}
-    for category, feeds in RSS_FEEDS.items():
-        headlines = []
-        for feed_url in feeds:
-            headlines.extend(_fetch_rss(feed_url))
-        collected[category] = headlines
-    return collected
-
-
-def summarize_with_gemini(headlines_by_category: dict, api_key: str, tries: int = 4) -> dict:
-    """
-    Wysyla zebrane naglowki do Gemini i prosi o gotowe, wyselekcjonowane
-    wiadomosci po polsku w strukturze zgodnej ze strona.
-    """
-    prompt = f"""
-Jestes redaktorem porannego briefingu finansowego po polsku.
-Dostajesz surowe naglowki RSS pogrupowane wg kategorii (ponizej, JSON).
-Kazda kategoria zawiera naglowki z KILKU roznych zapytan/zrodel - ten sam
-temat moze wiec pojawic sie w kilku wariantach/sformulowaniach.
-
-DEFINICJA "WAZNOSCI" (kluczowe, stosuj to konsekwentnie):
-Waznosc tematu NIE jest Twoja subiektywna ocena - to CZESTOTLIWOSC, z jaka
-dany temat/wydarzenie POWTARZA SIE w roznych naglowkach w obrebie kategorii.
-1. Najpierw pogrupuj naglowki wg tego, o jakim konkretnym wydarzeniu mowia
-   (np. "decyzja rzadu ws. VAT na paliwo" to jeden temat, nawet jesli opisany
-   w 4 roznych naglowkach na 4 rozne sposoby).
-2. Temat, ktory pojawia sie w NAJWIECEJ naglowkow (niezaleznie od zrodla/
-   zapytania), jest OBIEKTYWNIE najwazniejszy - to znaczy, ze najwiecej
-   redakcji/serwisow uznalo go za istotny tego dnia.
-3. Wybierz wg tej zasady maksymalnie 2 najczesciej powtarzajace sie tematy
-   na kategorie (jesli nic sie nie powtarza - wybierz pojedyncze naglowki
-   o najwiekszym znaczeniu faktycznym, np. decyzje rzadowe > deklaracje bez
-   konkretow > pojedyncze wypowiedzi).
-   Jesli w kategorii nic waznego nie ma - zwroc pusta liste [].
-
-SWIEZOSC (NADRZEDNA ZASADA, dotyczy WSZYSTKICH kategorii):
-Naglowki zostaly juz wstepnie odfiltrowane pod katem daty publikacji (tylko
-ostatnie ~24-30h), ale mimo to badz czujny - jesli jakis naglowek opisuje
-wydarzenie, ktore wg Twojej wiedzy jest OGOLNIE ZNANE od dluzszego czasu
-(np. temat powszechnie komentowany od dawna, a nie z ostatniej doby) -
-POMIN go, nawet jesli formalnie przeszedl filtr daty. Priorytet maja
-KONKRETNE, SWIEZE wydarzenia z ostatnich 24h (decyzje, glosowania, ogloszenia,
-wydarzenia), a nie kontynuacje/analizy starszych, juz "oswojonych" tematow.
-Im swiezsze wydarzenie (blizej dzisiaj), tym wyzszy priorytet - to
-wazniejsze kryterium niz to, do jakiej kategorii tematycznej temat pasuje.
-
-JASNOSC PRZEKAZU (obowiazkowe, dotyczy WSZYSTKICH kategorii): pisz
-jednoznacznie i konkretnie - podawaj nazwy ustaw, kwoty, konkretne decyzje,
-nazwiska, instytucje. Unikaj metnych, niejednoznacznych sformulowan typu
-"wazne zmiany" bez podania jakie.
-
-PRZYKLADOWE (NIE WYCZERPUJACE) KATEGORIE TEMATOW DLA "politicaPolska":
-Ponizsze to inspiracja czego szukac w tej kategorii, a nie zamkniete
-kryteria wykluczajace - rownie dobrze wartym uwagi tematem moze byc cos
-spoza tej listy, jesli jest swiezy i faktycznie istotny:
-- przeglosowane ustawy, zatwierdzone budzety, zmiany podatkowe,
-- oficjalne decyzje rzadow (Polska, USA, panstwa UE),
-- wiazace regulacje gospodarcze, przelomowe wyroki sadow wyzszych instancji
-  (Trybunal Konstytucyjny, Sad Najwyzszy, TSUE),
-- wazne spotkania/wizyty kluczowych polskich politykow (np. spotkania
-  prezydenta lub prezydenta Warszawy z zagranicznymi przywodcami),
-  oswiadczenia premiera/prezydenta/liderow partii,
-  wewnetrzne rozlamy, kryzysy lub konflikty w partiach politycznych,
-- glupie lub osmieszajace wypowiedzi polskich politykow - to celowo
-  dozwolone jako urozmaicenie, nie tylko "powazne" tematy sie licza.
-
-Wymagania:
-- Kazda wiadomosc PO POLSKU, MINIMUM 5 zdan, konkretna, bez lania wody.
-- Pisz naturalnym jezykiem dziennikarskim, pierwsze zdanie musi streszczac sedno.
-- Kategoria "marketNews" (wiadomosci rynkowe / o spolkach): wybierz dokladnie 5 wiadomosci,
-  kazda powiazana z konkretnymi spolkami/tickerami jesli to mozliwe.
-- Nie wymyslaj faktow ktorych nie ma w zrodlowych naglowkach - jesli czegos brakuje, pomin.
-
-Zrodlowe naglowki:
-{json.dumps(headlines_by_category, ensure_ascii=False, indent=2)}
-
-Zwroc WYLACZNIE poprawny JSON w formacie:
-{{
-  "politicaUS": ["..."],
-  "politicaPolska": ["..."],
-  "politicaEurope": ["..."],
-  "economyUS": ["..."],
-  "economyGlobal": ["..."],
-  "marketNews": ["...", "...", "...", "...", "..."]
-}}
-"""
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.4, "responseMimeType": "application/json"},
+        "tools": [{"google_search": {}}],
+        "generationConfig": {"temperature": 0.0},
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        GEMINI_URL.format(api_key=api_key),
+        GEMINI_URL.format(api_key=gemini_api_key),
         data=body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            if text.lower().startswith("json"):
+                text = text[4:]
+        data = json.loads(text)
+        if data.get("value") is None:
+            return None
+        return data
+    except Exception:
+        return None
 
-    last_error = None
-    for attempt in range(tries):
-        try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
-            text = result["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(text)
-        except Exception as err:
-            last_error = err
-            time.sleep(5 + attempt * 10)  # 5s, 15s, 25s, 35s - coraz dluzsza przerwa
 
-    raise RuntimeError(f"Gemini nie odpowiedział po {tries} probach: {last_error}")
-
-
-def build_news_sections() -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
+def fetch_indices() -> list[dict]:
+    """Indeksy pobieramy bezposrednio przez Gemini z wlaczonym wyszukiwaniem -
+    Finnhub na darmowym planie i tak zwykle nie ma indeksow, wiec pomijamy ten
+    krok i pytamy od razu, zeby nie tracic czasu na próbę, która i tak
+    najczesciej zawiedzie."""
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
         raise RuntimeError("Brak GEMINI_API_KEY w zmiennych srodowiskowych")
-    headlines = collect_raw_headlines()
-    return summarize_with_gemini(headlines, api_key)
+
+    out = []
+    for name in INDEX_SYMBOLS.keys():
+        fallback = _ask_gemini_for_index(name, gemini_key)
+        if not fallback:
+            continue  # Gemini nie znalazlo wiarygodnych danych - pomijamy
+        current = fallback["value"]
+        pct = fallback.get("change_pct") or 0
+        sign = "+" if pct >= 0 else ""
+        out.append({
+            "name": name,
+            "value": f"{current:,.2f}",
+            "change": f"{sign}{pct:.2f}%",
+            "type": "up" if pct >= 0 else "down",
+        })
+    return out
 
 
 if __name__ == "__main__":
-    print(json.dumps(build_news_sections(), indent=2, ensure_ascii=False))
+    key = os.environ.get("FINNHUB_API_KEY")
+    if not key:
+        print("Ustaw zmienna FINNHUB_API_KEY przed testem.")
+    else:
+        print(json.dumps(_fetch_group(MY_STOCK_SYMBOLS, key), indent=2, ensure_ascii=False))
