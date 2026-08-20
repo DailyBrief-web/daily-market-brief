@@ -572,8 +572,10 @@
             <h2 class="section-title"><span class="section-icon">📊</span> Gospodarka</h2>
             <div class="section-subtitle">USA</div>
             <div id="economyUS"></div>
-            <div class="section-subtitle">UE / Chiny / Świat</div>
-            <div id="economyGlobal"></div>
+            <div class="section-subtitle">UE i Polska</div>
+            <div id="economyEU"></div>
+            <div class="section-subtitle">Międzynarodowe</div>
+            <div id="economyIntl"></div>
         </div>
 
         <!-- INDEKSY -->
@@ -812,7 +814,8 @@
                 renderExpandableList('politicaPolska', brief.politicaPolska);
                 renderExpandableList('politicaEurope', brief.politicaEurope);
                 renderExpandableList('economyUS', brief.economyUS);
-                renderExpandableList('economyGlobal', brief.economyGlobal);
+                renderExpandableList('economyEU', brief.economyEU);
+                renderExpandableList('economyIntl', brief.economyIntl);
                 document.getElementById('indicesContainer').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
                 document.getElementById('myStocks').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
                 document.getElementById('worldStocks').innerHTML = '<div class="section-empty">Gieldy zamknięte — brak notowań</div>';
@@ -822,7 +825,8 @@
                 renderExpandableList('politicaPolska', brief.politicaPolska);
                 renderExpandableList('politicaEurope', brief.politicaEurope);
                 renderExpandableList('economyUS', brief.economyUS);
-                renderExpandableList('economyGlobal', brief.economyGlobal);
+                renderExpandableList('economyEU', brief.economyEU);
+                renderExpandableList('economyIntl', brief.economyIntl);
                 renderIndices(brief.indices);
                 renderStockGroup('myStocks', brief.myStocks, null);
                 renderStockGroup('worldStocks', brief.worldStocks, WORLD_STOCK_NAMES);
