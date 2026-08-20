@@ -34,8 +34,14 @@ RSS_FEEDS = {
     ],
     "politicaPolska": [
         _google_news_rss("polityka Polska Sejm rząd", "pl", "PL"),
-        _google_news_rss("Polska rząd decyzja ustawa", "pl", "PL"),
-        _google_news_rss("Tusk rząd konferencja", "pl", "PL"),
+        _google_news_rss("Sejm ustawa uchwalona budżet", "pl", "PL"),
+        _google_news_rss("Polska podatki decyzja rządu", "pl", "PL"),
+        _google_news_rss("Trybunał Konstytucyjny wyrok Sąd Najwyższy", "pl", "PL"),
+        _google_news_rss("Tusk premier oświadczenie", "pl", "PL"),
+        _google_news_rss("prezydent Nawrocki", "pl", "PL"),
+        _google_news_rss("Trzaskowski spotkanie wizyta", "pl", "PL"),
+        _google_news_rss("partia polityczna rozłam kryzys", "pl", "PL"),
+        _google_news_rss("polski polityk wypowiedź kontrowersja", "pl", "PL"),
     ],
     "politicaEurope": [
         _google_news_rss("European Union politics", "en", "US"),
@@ -136,6 +142,34 @@ X" ktora jest powszechnie komentowana od dawna, a nie z ostatniej doby) -
 POMIN go, nawet jesli formalnie przeszedl filtr daty. Priorytet maja
 KONKRETNE, SWIEZE wydarzenia z ostatnich 24h (decyzje, glosowania, ogloszenia),
 a nie kontynuacje/analizy starszych, juz "oswojonych" tematow.
+
+SPECJALNE ZASADY DLA KATEGORII "politicaPolska":
+
+NADRZEDNA ZASADA: SORTOWANIE CZASOWE. Im swiezsze wydarzenie (blizej dzisiaj),
+tym wyzszy priorytet - to najwazniejsze kryterium, wazniejsze niz to, do
+jakiej ponizszej kategorii temat pasuje.
+
+Ponizsze punkty to PRZYKLADOWE, NIE WYCZERPUJACE kategorie tematow wartych
+uwagi - to inspiracja czego szukac, a nie zamkniete kryteria wykluczajace.
+Rownie dobrze wartym uwagi tematem moze byc cos spoza tej listy, jesli jest
+swiezy i faktycznie istotny:
+- przeglosowane ustawy, zatwierdzone budzety, zmiany podatkowe,
+- oficjalne decyzje rzadow (Polska, USA, panstwa UE),
+- wiazace regulacje gospodarcze, przelomowe wyroki sadow wyzszych instancji
+  (Trybunal Konstytucyjny, Sad Najwyzszy, TSUE),
+- wazne spotkania/wizyty kluczowych polskich politykow (np. spotkania
+  prezydenta lub prezydenta Warszawy z zagranicznymi przywodcami),
+  oswiadczenia premiera/prezydenta/liderow partii,
+  wewnetrzne rozlamy, kryzysy lub konflikty w partiach politycznych,
+- glupie lub osmieszajace wypowiedzi polskich politykow - to celowo
+  dozwolone jako urozmaicenie, nie tylko "powazne" tematy sie licza.
+
+Oceniaj kazdy dzien indywidualnie wedlug tego, co faktycznie sie wydarzylo
+i jest swieze - nie ograniczaj sie sztywno do powyzszej listy kategorii.
+
+JASNOSC PRZEKAZU (obowiazkowe): pisz jednoznacznie i konkretnie - podawaj
+nazwy ustaw, kwoty, konkretne decyzje, nazwiska. Unikaj metnych,
+niejednoznacznych sformulowan typu "wazne zmiany" bez podania jakie.
 
 Wymagania:
 - Kazda wiadomosc PO POLSKU, MINIMUM 5 zdan, konkretna, bez lania wody.
