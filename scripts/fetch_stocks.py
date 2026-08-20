@@ -24,7 +24,8 @@ MY_STOCK_SYMBOLS = {
     "NVDA": "NVDA", "ASML": "ASML", "AMD": "AMD", "OSCR": "OSCR",
     "ZPRD": "ZPRD", "AMZN": "AMZN", "CNDX": None, "ELF": "ELF",
     "NOW": "NOW", "SXRS": None, "IBCJ": None, "GOOG": "GOOG",
-    "TTWO": "TTWO", "BTC": "BINANCE:BTCUSDT", "META": "META", "SOFI": "SOFI",
+    "TTWO": "TTWO", "BTC": "BINANCE:BTCUSDT", "XRP": "BINANCE:XRPUSDT",
+    "META": "META", "SOFI": "SOFI",
 }
 
 WORLD_STOCK_SYMBOLS = {
@@ -35,12 +36,13 @@ WORLD_STOCK_SYMBOLS = {
     "PLTR": "PLTR", "NFLX": "NFLX", "ORCL": "ORCL", "COST": "COST",
 }
 
-# Indeksy nie sa dostepne na darmowym planie Finnhub - uzywamy ETF-ow
-# sledzacych te same indeksy jako wiarygodnego przyblizenia.
-INDEX_PROXIES = {
-    "S&P 500": "SPY",
-    "NASDAQ": "QQQ",
-    "Dow Jones": "DIA",
+# Nazwy indeksow, o ktore pytamy Gemini (z wlaczonym wyszukiwaniem w internecie -
+# patrz fetch_indices() i _ask_gemini_for_index() nizej). Nie probujemy juz
+# pobierac ich z Finnhub, bo darmowy plan i tak zwykle ich nie obejmuje.
+INDEX_SYMBOLS = {
+    "S&P 500": None,
+    "NASDAQ": None,
+    "WIG20": None,
 }
 
 BASE_URL = "https://finnhub.io/api/v1/quote"
@@ -97,18 +99,69 @@ def fetch_all_stocks(symbols: list[str]) -> dict:
     return _fetch_group(WORLD_STOCK_SYMBOLS, api_key)
 
 
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-3.6-flash:generateContent?key={api_key}"
+)
+
+
+def _ask_gemini_for_index(name: str, gemini_api_key: str):
+    """Ostatnia linia obrony, gdy Finnhub nie ma danych dla danego indeksu.
+    WAZNE: model NIE zgaduje - pytamy go z wlaczonym narzedziem wyszukiwania
+    w Google (google_search), wiec faktycznie sprawdza aktualne zrodla w
+    internecie zamiast halucynowac liczbe. Jesli nie znajdzie wiarygodnych
+    danych, ma zwrocic null zamiast czegokolwiek zmyslac."""
+    prompt = f"""Wyszukaj w internecie AKTUALNA wartosc zamkniecia dzisiejszej
+sesji gieldowej dla indeksu "{name}" oraz procentowa zmiane wzgledem
+poprzedniej sesji. Uzyj wyszukiwarki, nie zgaduj i nie szacuj z pamieci.
+Jesli nie znajdziesz wiarygodnych, aktualnych danych - zwroc null w obu polach.
+Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
+{{"value": <liczba lub null>, "change_pct": <liczba, dodatnia lub ujemna, lub null>}}"""
+
+    body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {"temperature": 0.0},
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        GEMINI_URL.format(api_key=gemini_api_key),
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            if text.lower().startswith("json"):
+                text = text[4:]
+        data = json.loads(text)
+        if data.get("value") is None:
+            return None
+        return data
+    except Exception:
+        return None
+
+
 def fetch_indices() -> list[dict]:
-    api_key = os.environ.get("FINNHUB_API_KEY")
-    if not api_key:
-        raise RuntimeError("Brak FINNHUB_API_KEY w zmiennych srodowiskowych")
+    """Indeksy pobieramy bezposrednio przez Gemini z wlaczonym wyszukiwaniem -
+    Finnhub na darmowym planie i tak zwykle nie ma indeksow, wiec pomijamy ten
+    krok i pytamy od razu, zeby nie tracic czasu na próbę, która i tak
+    najczesciej zawiedzie."""
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
+        raise RuntimeError("Brak GEMINI_API_KEY w zmiennych srodowiskowych")
 
     out = []
-    for name, proxy_symbol in INDEX_PROXIES.items():
-        quote = _fetch_quote(proxy_symbol, api_key)
-        if not quote:
-            continue
-        current = quote["c"]
-        pct = quote.get("dp", 0)
+    for name in INDEX_SYMBOLS.keys():
+        fallback = _ask_gemini_for_index(name, gemini_key)
+        if not fallback:
+            continue  # Gemini nie znalazlo wiarygodnych danych - pomijamy
+        current = fallback["value"]
+        pct = fallback.get("change_pct") or 0
         sign = "+" if pct >= 0 else ""
         out.append({
             "name": name,
@@ -116,7 +169,6 @@ def fetch_indices() -> list[dict]:
             "change": f"{sign}{pct:.2f}%",
             "type": "up" if pct >= 0 else "down",
         })
-        time.sleep(1.1)
     return out
 
 
