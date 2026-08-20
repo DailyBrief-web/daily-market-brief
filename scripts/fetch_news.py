@@ -11,12 +11,18 @@ import os
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 
 def _google_news_rss(query: str, lang: str = "pl", country: str = "PL") -> str:
-    """Buduje URL do wyszukiwarki Google News RSS - darmowe, stabilne, bez klucza API."""
+    """Buduje URL do wyszukiwarki Google News RSS - darmowe, stabilne, bez klucza API.
+    Dodajemy 'when:1d', zeby Google zwracal TYLKO artykuly z ostatnich 24h -
+    bez tego wyszukiwarka zwraca tez starsze, wciaz "trafne" tematycznie
+    artykuly (np. analizy sprzed kilku dni), co psuje swiezosc briefu."""
     from urllib.parse import quote
+    query_with_freshness = f"{query} when:1d"
     return (
-        f"https://news.google.com/rss/search?q={quote(query)}"
+        f"https://news.google.com/rss/search?q={quote(query_with_freshness)}"
         f"&hl={lang}&gl={country}&ceid={country}:{lang}"
     )
 
@@ -24,15 +30,20 @@ def _google_news_rss(query: str, lang: str = "pl", country: str = "PL") -> str:
 RSS_FEEDS = {
     "politicaUS": [
         _google_news_rss("Trump White House politics", "en", "US"),
+        _google_news_rss("US Congress legislation vote", "en", "US"),
     ],
     "politicaPolska": [
         _google_news_rss("polityka Polska Sejm rząd", "pl", "PL"),
+        _google_news_rss("Polska rząd decyzja ustawa", "pl", "PL"),
+        _google_news_rss("Tusk rząd konferencja", "pl", "PL"),
     ],
     "politicaEurope": [
         _google_news_rss("European Union politics", "en", "US"),
+        _google_news_rss("EU Brussels decision policy", "en", "US"),
     ],
     "economyUS": [
         _google_news_rss("US economy Federal Reserve inflation", "en", "US"),
+        _google_news_rss("US taxes economy policy", "en", "US"),
     ],
     "economyGlobal": [
         _google_news_rss("global economy China EU economy", "en", "US"),
@@ -48,18 +59,32 @@ GEMINI_URL = (
 )
 
 
-def _fetch_rss(url: str, limit: int = 8) -> list[str]:
+def _fetch_rss(url: str, limit: int = 20, max_age_hours: int = 30) -> list[str]:
+    """Pobiera naglowki, ODRZUCAJAC te starsze niz max_age_hours - to twarda
+    gwarancja swiezosci, niezalezna od tego, czy Google poprawnie zastosuje
+    filtr 'when:1d' w URL (czasem nie stosuje go idealnie)."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read()
         root = ET.fromstring(raw)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         items = []
         for item in root.iter("item"):
             title = item.findtext("title") or ""
             desc = item.findtext("description") or ""
-            if title:
-                items.append(f"{title.strip()} — {desc.strip()[:200]}")
+            pub_date_raw = item.findtext("pubDate") or ""
+            if not title:
+                continue
+            try:
+                pub_date = parsedate_to_datetime(pub_date_raw)
+                if pub_date.tzinfo is None:
+                    pub_date = pub_date.replace(tzinfo=timezone.utc)
+                if pub_date < cutoff:
+                    continue  # za stary artykul - pomijamy
+            except Exception:
+                pass  # brak/bledna data - nie odrzucamy w ciemno, ale tez nie ufamy w 100%
+            items.append(f"{title.strip()} — {desc.strip()[:200]}")
             if len(items) >= limit:
                 break
         return items
@@ -85,8 +110,32 @@ def summarize_with_gemini(headlines_by_category: dict, api_key: str, tries: int 
     prompt = f"""
 Jestes redaktorem porannego briefingu finansowego po polsku.
 Dostajesz surowe naglowki RSS pogrupowane wg kategorii (ponizej, JSON).
-Dla kazdej kategorii wybierz maksymalnie 2 NAJWAZNIEJSZE wiadomosci
-(jesli nic waznego - zwroc pusta liste []).
+Kazda kategoria zawiera naglowki z KILKU roznych zapytan/zrodel - ten sam
+temat moze wiec pojawic sie w kilku wariantach/sformulowaniach.
+
+DEFINICJA "WAZNOSCI" (kluczowe, stosuj to konsekwentnie):
+Waznosc tematu NIE jest Twoja subiektywna ocena - to CZESTOTLIWOSC, z jaka
+dany temat/wydarzenie POWTARZA SIE w roznych naglowkach w obrebie kategorii.
+1. Najpierw pogrupuj naglowki wg tego, o jakim konkretnym wydarzeniu mowia
+   (np. "decyzja rzadu ws. VAT na paliwo" to jeden temat, nawet jesli opisany
+   w 4 roznych naglowkach na 4 rozne sposoby).
+2. Temat, ktory pojawia sie w NAJWIECEJ naglowkow (niezaleznie od zrodla/
+   zapytania), jest OBIEKTYWNIE najwazniejszy - to znaczy, ze najwiecej
+   redakcji/serwisow uznalo go za istotny tego dnia.
+3. Wybierz wg tej zasady maksymalnie 2 najczesciej powtarzajace sie tematy
+   na kategorie (jesli nic sie nie powtarza - wybierz pojedyncze naglowki
+   o najwiekszym znaczeniu faktycznym, np. decyzje rzadowe > deklaracje bez
+   konkretow > pojedyncze wypowiedzi).
+   Jesli w kategorii nic waznego nie ma - zwroc pusta liste [].
+
+SWIEZOSC (rownie kluczowe):
+Naglowki zostaly juz wstepnie odfiltrowane pod katem daty publikacji, ale
+mimo to badz czujny - jesli jakis naglowek opisuje wydarzenie, ktore wg
+Twojej wiedzy jest OGOLNIE ZNANE od dluzszego czasu (np. "porazka polityczna
+X" ktora jest powszechnie komentowana od dawna, a nie z ostatniej doby) -
+POMIN go, nawet jesli formalnie przeszedl filtr daty. Priorytet maja
+KONKRETNE, SWIEZE wydarzenia z ostatnich 24h (decyzje, glosowania, ogloszenia),
+a nie kontynuacje/analizy starszych, juz "oswojonych" tematow.
 
 Wymagania:
 - Kazda wiadomosc PO POLSKU, MINIMUM 5 zdan, konkretna, bez lania wody.
