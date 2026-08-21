@@ -72,7 +72,7 @@ GEMINI_URL = (
 )
 
 
-def _fetch_rss(url: str, limit: int = 20, max_age_hours: int = 30) -> list[str]:
+def _fetch_rss(url: str, limit: int = 10, max_age_hours: int = 30) -> list[str]:
     """Pobiera naglowki, ODRZUCAJAC te starsze niz max_age_hours - to twarda
     gwarancja swiezosci, niezalezna od tego, czy Google poprawnie zastosuje
     filtr 'when:1d' w URL (czasem nie stosuje go idealnie)."""
@@ -106,11 +106,27 @@ def _fetch_rss(url: str, limit: int = 20, max_age_hours: int = 30) -> list[str]:
 
 
 def collect_raw_headlines() -> dict:
+    """Zbiera naglowki ze wszystkich zapytan na kategorie, USUWAJAC duplikaty
+    (rozne zapytania czesto lapia te same artykuly) i OGRANICZAJAC laczna
+    liczbe na kategorie - bez tego prompt do Gemini robi sie tak duzy, ze
+    model nie zdazy odpowiedziec w rozsadnym czasie (stąd timeouty)."""
+    max_per_category = 25
     collected = {}
     for category, feeds in RSS_FEEDS.items():
         headlines = []
+        seen_titles = set()
         for feed_url in feeds:
-            headlines.extend(_fetch_rss(feed_url))
+            for headline in _fetch_rss(feed_url):
+                # klucz do wykrywania duplikatow - pierwsze ~60 znakow tytulu
+                dedup_key = headline[:60].lower().strip()
+                if dedup_key in seen_titles:
+                    continue
+                seen_titles.add(dedup_key)
+                headlines.append(headline)
+                if len(headlines) >= max_per_category:
+                    break
+            if len(headlines) >= max_per_category:
+                break
         collected[category] = headlines
     return collected
 
@@ -252,7 +268,7 @@ Zwroc WYLACZNIE poprawny JSON w formacie:
     last_error = None
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
+            with urllib.request.urlopen(req, timeout=75) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
             text = result["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(text)
