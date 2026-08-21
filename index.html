@@ -631,7 +631,10 @@
 
         async function loadBrief(dateKey) {
             if (BRIEF_CACHE[dateKey]) return BRIEF_CACHE[dateKey];
-            const res = await fetch(`${DATA_DIR}/${dateKey}.json`, { cache: 'force-cache' });
+            // 'no-store' zamiast 'force-cache' - pliki sa male, a bez tego
+            // przegladarka potrafi uparcie trzymac sie starej wersji dnia,
+            // ktory zostal pozniej nadpisany (np. po naprawie bledu w danych).
+            const res = await fetch(`${DATA_DIR}/${dateKey}.json`, { cache: 'no-store' });
             if (!res.ok) throw new Error(`Brak danych dla ${dateKey}`);
             const brief = await res.json();
             BRIEF_CACHE[dateKey] = brief;
@@ -944,4 +947,5 @@
         init();
     </script>
 </body>
+</html>
 </html>
