@@ -24,17 +24,48 @@ WORLD_STOCK_LIST = ['TSM','SMSN','MC','NVO','NESN','TM','SAP','BABA','AZN','AAPL
                      'MSFT','TSLA','AVGO','LLY','JPM','WMT','PLTR','NFLX','ORCL','COST']
 
 
-def build_title(status: dict) -> str:
-    if not status["us_open"] and not status["gpw_open"]:
-        return "Gieldy zamkniete — brak dzisiejszej sesji"
-    return "Podsumowanie dzisiejszej sesji"
-
-
-def first_sentence(text: str) -> str:
-    """Wyciaga pierwsze pelne zdanie z tekstu - uzywane do tytulu, zeby nie
+def first_n_sentences(text: str, n: int = 2) -> str:
+    """Wyciaga pierwsze N pelnych zdan z tekstu - uzywane do tytulu, zeby nie
     ucinac w polowie slowa i nie doklejac wielokropka."""
-    match = re.match(r"^.*?[.!?](?=\s|$)", text)
-    return match.group(0).strip() if match else text.strip()
+    matches = re.findall(r"[^.!?]*[.!?]", text)
+    if not matches:
+        return text.strip()
+    return "".join(matches[:n]).strip()
+
+
+def pick_title(news: dict, is_trading_day: bool) -> tuple[str, str | None]:
+    """Wybiera tytul glowny z pierwszej niepustej kategorii wg priorytetu -
+    dzieki temu w dni bez sesji gieldowej (weekendy) tytul moze pochodzic
+    z polityki/gospodarki, zamiast zawsze byc nudnym "Gieldy zamkniete"."""
+    if is_trading_day:
+        priority = [
+            ("marketNews", "💼 Giełda — Wiadomości rynkowe"),
+            ("politicaPolska", "🏛️ Polityka — Polska"),
+            ("politicaUS", "🏛️ Polityka — USA"),
+            ("politicaEurope", "🏛️ Polityka — Europa"),
+            ("economyEU", "📊 Gospodarka — UE i Polska"),
+            ("economyUS", "📊 Gospodarka — USA"),
+            ("economyIntl", "📊 Gospodarka — Międzynarodowe"),
+        ]
+    else:
+        priority = [
+            ("politicaPolska", "🏛️ Polityka — Polska"),
+            ("politicaUS", "🏛️ Polityka — USA"),
+            ("politicaEurope", "🏛️ Polityka — Europa"),
+            ("economyEU", "📊 Gospodarka — UE i Polska"),
+            ("economyUS", "📊 Gospodarka — USA"),
+            ("economyIntl", "📊 Gospodarka — Międzynarodowe"),
+        ]
+
+    for category, label in priority:
+        items = news.get(category, [])
+        if items:
+            return first_n_sentences(items[0], n=2), label
+
+    # Nic nie znaleziono w zadnej kategorii - ostatnia linia obrony.
+    if not is_trading_day:
+        return "Gieldy zamkniete — brak dzisiejszej sesji", None
+    return "Podsumowanie dzisiejszej sesji", None
 
 
 def load_existing_brief(date_str: str) -> dict | None:
@@ -105,8 +136,6 @@ def build_brief_for_today() -> dict:
         # zostaje jako wyrazne info o braku sesji, a nie realne newsy o
         # spolkach (ktore z natury sa zwiazane z notowaniami).
         my_stocks, world_stocks, indices = {}, {}, []
-        title = "Gieldy zamkniete — brak dzisiejszej sesji"
-        title_source = None
         market_news = ["Dzisiaj nie ma sesji gieldowej (weekend lub swieto)."]
     else:
         if existing and not is_empty(existing.get("myStocks")):
@@ -140,12 +169,8 @@ def build_brief_for_today() -> dict:
                 indices = []
 
         market_news = news.get("marketNews", [])
-        if market_news:
-            title = first_sentence(market_news[0])
-            title_source = "💼 Giełda — Wiadomości rynkowe"
-        else:
-            title = build_title(status)
-            title_source = None
+
+    title, title_source = pick_title(news, is_trading_day)
 
     return {
         "date": today_str,
