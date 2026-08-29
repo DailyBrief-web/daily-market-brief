@@ -17,6 +17,7 @@ calego skryptu), warto to zweryfikowac i ew. podmienic na amerykanskie odpowiedn
 import json
 import time
 import urllib.request
+import urllib.error
 import os
 
 # Twoje akcje - tickery Finnhub (przewaznie identyczne z popularnymi symbolami)
@@ -133,17 +134,38 @@ Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
     try:
         with urllib.request.urlopen(req, timeout=45) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-        if text.startswith("```"):
-            text = text.strip("`")
-            if text.lower().startswith("json"):
-                text = text[4:]
-        data = json.loads(text)
-        if data.get("value") is None:
-            return None
-        return data
-    except Exception:
+    except urllib.error.HTTPError as err:
+        # Blad HTTP (np. zla nazwa narzedzia, niedozwolony model, zly klucz) -
+        # cialo odpowiedzi zwykle zawiera dokladny powod, wypisujemy go.
+        body_text = err.read().decode("utf-8", errors="replace")
+        print(f"UWAGA (indeks '{name}'): Gemini HTTP {err.code}: {body_text[:500]}")
         return None
+    except Exception as err:
+        print(f"UWAGA (indeks '{name}'): blad polaczenia z Gemini: {err}")
+        return None
+
+    try:
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError) as err:
+        print(f"UWAGA (indeks '{name}'): nieoczekiwana struktura odpowiedzi Gemini: {err}")
+        print(f"Pelna odpowiedz: {json.dumps(result, ensure_ascii=False)[:800]}")
+        return None
+
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:]
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as err:
+        print(f"UWAGA (indeks '{name}'): odpowiedz Gemini nie jest poprawnym JSON: {err}")
+        print(f"Otrzymany tekst: {text[:500]}")
+        return None
+
+    if data.get("value") is None:
+        print(f"INFO (indeks '{name}'): Gemini nie znalazlo wiarygodnych danych (value=null).")
+        return None
+    return data
 
 
 def fetch_indices() -> list[dict]:
