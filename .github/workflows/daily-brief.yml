@@ -2,12 +2,17 @@ name: Daily Market Brief
 
 on:
   schedule:
-    # Glowne uruchomienie: 22:00 UTC w dni robocze, po zamknieciu sesji US
-    - cron: '0 22 * * 1-5'
-    # Zapasowe uruchomienie: 2h pozniej, na wypadek gdyby glowne nie zdobylo
-    # wszystkich danych (np. Gemini akurat nie odpowiadal). Dzieki logice w
-    # generate_brief.py, to uruchomienie dopelni tylko to, czego brakuje.
-    - cron: '0 0 * * 2-6'
+    # Trzy proby dziennie, KAZDEGO dnia tygodnia (rowniez weekendy - polityka
+    # i gospodarka "dzieja sie" niezaleznie od tego czy gielda ma sesje).
+    # Trzy proby zamiast jednej/dwoch zabezpieczaja przed sytuacja, w ktorej
+    # GitHub Actions "zgubi" pojedyncze zaplanowane uruchomienie (znane,
+    # udokumentowane ograniczenie darmowego planu - harmonogram cron nie jest
+    # w 100% gwarantowany). Dzieki logice w generate_brief.py kazde kolejne
+    # uruchomienie tego samego dnia jest bezpieczne - albo nic nie robi (jesli
+    # poprzednie juz wszystko zapisalo), albo dopelnia tylko brakujace czesci.
+    - cron: '0 22 * * *'   # 22:00 UTC - glowne, po zamknieciu sesji US
+    - cron: '0 0 * * *'    # 00:00 UTC - 1. zapasowe
+    - cron: '0 6 * * *'    # 06:00 UTC - 2. zapasowe
   workflow_dispatch: {}   # pozwala odpalic recznie z zakladki Actions
 
 permissions:
