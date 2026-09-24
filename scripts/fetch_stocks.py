@@ -106,18 +106,25 @@ GEMINI_URL = (
 )
 
 
-def _ask_gemini_for_index(name: str, gemini_api_key: str):
-    """Ostatnia linia obrony, gdy Finnhub nie ma danych dla danego indeksu.
-    WAZNE: model NIE zgaduje - pytamy go z wlaczonym narzedziem wyszukiwania
-    w Google (google_search), wiec faktycznie sprawdza aktualne zrodla w
-    internecie zamiast halucynowac liczbe. Jesli nie znajdzie wiarygodnych
-    danych, ma zwrocic null zamiast czegokolwiek zmyslac."""
-    prompt = f"""Wyszukaj w internecie AKTUALNA wartosc zamkniecia dzisiejszej
-sesji gieldowej dla indeksu "{name}" oraz procentowa zmiane wzgledem
+def _ask_gemini_for_all_indices(names: list[str], gemini_api_key: str):
+    """Jedno zapytanie o WSZYSTKIE indeksy naraz, zamiast osobnego zapytania
+    na kazdy. Wazne, bo funkcja wyszukiwania w internecie (google_search) ma
+    wlasny, dużo bardziej restrykcyjny darmowy limit dzienny niz normalne
+    zapytania do Gemini - 3 osobne zapytania x 3 uruchomienia dziennie = 9
+    zapytan/dzien szybko wyczerpywalo ten limit (blad 429 RESOURCE_EXHAUSTED).
+    Jedno polaczone zapytanie redukuje to zuzycie 3-krotnie.
+    WAZNE: model NIE zgaduje - uzywa wyszukiwania w Google, wiec faktycznie
+    sprawdza aktualne zrodla, a nie halucynuje liczby."""
+    names_list = ", ".join(f'"{n}"' for n in names)
+    prompt = f"""Wyszukaj w internecie AKTUALNE wartosci zamkniecia dzisiejszej
+sesji gieldowej dla nastepujacych indeksow: {names_list}.
+Dla kazdego podaj wartosc zamkniecia oraz procentowa zmiane wzgledem
 poprzedniej sesji. Uzyj wyszukiwarki, nie zgaduj i nie szacuj z pamieci.
-Jesli nie znajdziesz wiarygodnych, aktualnych danych - zwroc null w obu polach.
+Jesli dla ktoregos indeksu nie znajdziesz wiarygodnych, aktualnych danych -
+zwroc dla niego null w obu polach (nie pomijaj go w JSON, zwroc null).
 Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
-{{"value": <liczba lub null>, "change_pct": <liczba, dodatnia lub ujemna, lub null>}}"""
+{{"S&P 500": {{"value": <liczba lub null>, "change_pct": <liczba lub null>}}, ...}}
+(dokladnie z takimi kluczami jak podane nazwy indeksow powyzej)"""
 
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
@@ -132,24 +139,22 @@ Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as err:
-        # Blad HTTP (np. zla nazwa narzedzia, niedozwolony model, zly klucz) -
-        # cialo odpowiedzi zwykle zawiera dokladny powod, wypisujemy go.
         body_text = err.read().decode("utf-8", errors="replace")
-        print(f"UWAGA (indeks '{name}'): Gemini HTTP {err.code}: {body_text[:500]}")
-        return None
+        print(f"UWAGA (indeksy): Gemini HTTP {err.code}: {body_text[:500]}")
+        return {}
     except Exception as err:
-        print(f"UWAGA (indeks '{name}'): blad polaczenia z Gemini: {err}")
-        return None
+        print(f"UWAGA (indeksy): blad polaczenia z Gemini: {err}")
+        return {}
 
     try:
         text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
     except (KeyError, IndexError) as err:
-        print(f"UWAGA (indeks '{name}'): nieoczekiwana struktura odpowiedzi Gemini: {err}")
+        print(f"UWAGA (indeksy): nieoczekiwana struktura odpowiedzi Gemini: {err}")
         print(f"Pelna odpowiedz: {json.dumps(result, ensure_ascii=False)[:800]}")
-        return None
+        return {}
 
     if text.startswith("```"):
         text = text.strip("`")
@@ -158,13 +163,10 @@ Zwroc WYLACZNIE czysty JSON (bez markdown, bez ```), w formacie:
     try:
         data = json.loads(text)
     except json.JSONDecodeError as err:
-        print(f"UWAGA (indeks '{name}'): odpowiedz Gemini nie jest poprawnym JSON: {err}")
+        print(f"UWAGA (indeksy): odpowiedz Gemini nie jest poprawnym JSON: {err}")
         print(f"Otrzymany tekst: {text[:500]}")
-        return None
+        return {}
 
-    if data.get("value") is None:
-        print(f"INFO (indeks '{name}'): Gemini nie znalazlo wiarygodnych danych (value=null).")
-        return None
     return data
 
 
@@ -177,13 +179,17 @@ def fetch_indices() -> list[dict]:
     if not gemini_key:
         raise RuntimeError("Brak GEMINI_API_KEY w zmiennych srodowiskowych")
 
+    names = list(INDEX_SYMBOLS.keys())
+    all_data = _ask_gemini_for_all_indices(names, gemini_key)
+
     out = []
-    for name in INDEX_SYMBOLS.keys():
-        fallback = _ask_gemini_for_index(name, gemini_key)
-        if not fallback:
-            continue  # Gemini nie znalazlo wiarygodnych danych - pomijamy
-        current = fallback["value"]
-        pct = fallback.get("change_pct") or 0
+    for name in names:
+        entry = all_data.get(name)
+        if not entry or entry.get("value") is None:
+            print(f"INFO (indeks '{name}'): Gemini nie znalazlo wiarygodnych danych.")
+            continue
+        current = entry["value"]
+        pct = entry.get("change_pct") or 0
         sign = "+" if pct >= 0 else ""
         out.append({
             "name": name,
