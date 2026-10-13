@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-13",
+  "tradingDay": true,
+  "title": "Podsumowanie dzisiejszej sesji",
+  "titleSource": null,
+  "politicaUS": [],
+  "politicaPolska": [],
+  "politicaEurope": [],
+  "economyUS": [],
+  "economyEU": [],
+  "economyIntl": [],
+  "indices": [],
+  "myStocks": {
+    "NVDA": {
+      "change": "-1.29%",
+      "price": "$226.32"
+    },
+    "ASML": {
+      "change": "-1.69%",
+      "price": "$1,750.24"
+    },
+    "AMD": {
+      "change": "-2.28%",
+      "price": "$594.24"
+    },
+    "OSCR": {
+      "change": "+1.92%",
+      "price": "$34.01"
+    },
+    "AMZN": {
+      "change": "-1.11%",
+      "price": "$259.53"
+    },
+    "ELF": {
+      "change": "+0.65%",
+      "price": "$109.94"
+    },
+    "NOW": {
+      "change": "-0.38%",
+      "price": "$140.32"
+    },
+    "GOOG": {
+      "change": "+0.32%",
+      "price": "$348.97"
+    },
+    "TTWO": {
+      "change": "-2.16%",
+      "price": "$208.82"
+    },
+    "BTC": {
+      "change": "-1.04%",
+      "price": "$82,981.26"
+    },
+    "XRP": {
+      "change": "-3.01%",
+      "price": "$1.37"
+    },
+    "META": {
+      "change": "+3.38%",
+      "price": "$742.96"
+    },
+    "SOFI": {
+      "change": "-3.61%",
+      "price": "$15.23"
+    }
+  },
+  "worldStocks": {
+    "TSM": {
+      "change": "-1.98%",
+      "price": "$444.35"
+    },
+    "NVO": {
+      "change": "-0.16%",
+      "price": "$38.58"
+    },
+    "TM": {
+      "change": "-0.31%",
+      "price": "$184.72"
+    },
+    "SAP": {
+      "change": "+1.43%",
+      "price": "$217.85"
+    },
+    "BABA": {
+      "change": "-0.53%",
+      "price": "$110.78"
+    },
+    "AZN": {
+      "change": "-0.55%",
+      "price": "$158.33"
+    },
+    "AAPL": {
+      "change": "+1.29%",
+      "price": "$340.97"
+    },
+    "MSFT": {
+      "change": "+1.14%",
+      "price": "$541.15"
+    },
+    "TSLA": {
+      "change": "-1.22%",
+      "price": "$378.03"
+    },
+    "AVGO": {
+      "change": "-1.88%",
+      "price": "$354.73"
+    },
+    "LLY": {
+      "change": "+0.28%",
+      "price": "$1,182.62"
+    },
+    "JPM": {
+      "change": "+0.39%",
+      "price": "$334.30"
+    },
+    "WMT": {
+      "change": "+1.55%",
+      "price": "$113.08"
+    },
+    "PLTR": {
+      "change": "-0.02%",
+      "price": "$209.00"
+    },
+    "NFLX": {
+      "change": "+0.44%",
+      "price": "$70.61"
+    },
+    "ORCL": {
+      "change": "-2.84%",
+      "price": "$137.39"
+    },
+    "COST": {
+      "change": "+1.32%",
+      "price": "$959.44"
+    }
+  },
+  "marketNews": []
+}
