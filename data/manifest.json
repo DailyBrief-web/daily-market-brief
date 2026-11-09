@@ -245,7 +245,10 @@
     },
     "2026-11-08": {
       "tradingDay": false
+    },
+    "2026-11-09": {
+      "tradingDay": true
     }
   },
-  "lastUpdated": "2026-11-08T14:43:26.014339Z"
+  "lastUpdated": "2026-11-09T01:32:45.486603Z"
 }
